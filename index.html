@@ -144,8 +144,12 @@
     .recur-row { display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-bottom: 1px solid var(--border); transition: background .1s; }
     .recur-row:last-child { border-bottom: none; }
     .recur-row:hover { background: var(--surface-2); }
-    .recur-row:hover .del-btn { opacity: 1; }
+    .recur-row:hover .del-btn,
+    .recur-row:hover .edit-btn { opacity: 1; }
     .recur-freq { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .edit-btn { background: none; border: none; cursor: pointer; color: var(--text-3); padding: 4px; border-radius: var(--radius); opacity: 0; font-size: 14px; transition: all .1s; line-height: 1; }
+    .edit-btn:hover { color: var(--blue); background: var(--blue-bg); }
+    .recur-actions { display: flex; gap: 2px; flex-shrink: 0; }
 
     /* ── Modal ── */
     .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 1rem; }
@@ -252,16 +256,22 @@ function expandRecurring(year, month) {
   Object.values(state.recurring).forEach(r => {
     const start = new Date(r.startDate + 'T00:00:00');
     let d = new Date(start);
-    const monthEnd = new Date(year, month + 1, 0);
+    const monthEnd   = new Date(year, month + 1, 0);
     const monthStart = new Date(year, month, 1);
     let safety = 0;
-    while (d <= monthEnd && safety++ < 200) {
+    while (d <= monthEnd && safety++ < 500) {
       if (d >= monthStart) {
         expanded.push({ ...r, id: r.id + '_' + d.toISOString().slice(0,10), date: d.toISOString().slice(0,10), isInstance: true });
       }
-      if (r.frequency === 'weekly')     d.setDate(d.getDate() + 7);
-      else if (r.frequency === 'biweekly') d.setDate(d.getDate() + 14);
-      else if (r.frequency === 'monthly')  { d.setMonth(d.getMonth() + 1); }
+      const freq = r.frequency;
+      if      (freq === 'weekly')      d.setDate(d.getDate() + 7);
+      else if (freq === 'biweekly')    d.setDate(d.getDate() + 14);
+      else if (freq === 'triweekly')   d.setDate(d.getDate() + 21);
+      else if (freq === 'monthly')     d.setMonth(d.getMonth() + 1);
+      else if (freq === 'bimonthly')   d.setMonth(d.getMonth() + 2);
+      else if (freq === 'quarterly')   d.setMonth(d.getMonth() + 3);
+      else if (freq === 'semiannual')  d.setMonth(d.getMonth() + 6);
+      else if (freq === 'annual')      d.setFullYear(d.getFullYear() + 1);
       else break;
     }
   });
@@ -500,7 +510,11 @@ function renderList(y, m) {
 }
 
 function renderRecurring() {
-  const freqLabel = { weekly: 'Every week', biweekly: 'Every 2 weeks', monthly: 'Every month' };
+  const freqLabel = {
+    weekly: 'Every week', biweekly: 'Every 2 weeks', triweekly: 'Every 3 weeks',
+    monthly: 'Every month', bimonthly: 'Every 2 months', quarterly: 'Every 3 months',
+    semiannual: 'Every 6 months', annual: 'Every year'
+  };
   const rows = Object.values(state.recurring).map(r => `
     <div class="recur-row">
       <div class="entry-icon ${r.type}">${r.type==='income'?'↓':'↑'}</div>
@@ -509,7 +523,10 @@ function renderRecurring() {
         <div class="recur-freq">${freqLabel[r.frequency]||r.frequency} · from ${r.startDate} · ${r.category}</div>
       </div>
       <div class="entry-amount ${r.type}">${r.type==='income'?'+':'-'}${fmt(+r.amount)}</div>
-      <button class="del-btn" data-action="del-recurring" data-id="${r.id}">✕</button>
+      <div class="recur-actions">
+        <button class="edit-btn" data-action="edit-recurring" data-id="${r.id}" title="Edit">✎</button>
+        <button class="del-btn"  data-action="del-recurring"  data-id="${r.id}" title="Delete">✕</button>
+      </div>
     </div>`).join('');
 
   return `<div class="panel">
@@ -591,39 +608,49 @@ function openEntryModal(defaultDate) {
   });
 }
 
-function openRecurModal() {
-  let type = 'expense';
+function openRecurModal(existingId) {
+  const existing = existingId ? state.recurring[existingId] : null;
+  let type = existing ? existing.type : 'expense';
+
+  const freqOptions = [
+    ['weekly',     'Every week'],
+    ['biweekly',   'Every 2 weeks'],
+    ['triweekly',  'Every 3 weeks'],
+    ['monthly',    'Every month'],
+    ['bimonthly',  'Every 2 months'],
+    ['quarterly',  'Every 3 months'],
+    ['semiannual', 'Every 6 months'],
+    ['annual',     'Every year'],
+  ];
+
+  const freqOpts = freqOptions.map(([val, label]) =>
+    `<option value="${val}" ${existing && existing.frequency === val ? 'selected' : ''}>${label}</option>`
+  ).join('');
+
+  const catOptions = ['Housing','Food & dining','Transportation','Utilities','Healthcare','Entertainment','Shopping','Savings','Income','Other'];
+  const catOpts = catOptions.map(c =>
+    `<option ${existing && existing.category === c ? 'selected' : ''}>${c}</option>`
+  ).join('');
+
   document.getElementById('modal-root').innerHTML = `
   <div class="modal-backdrop" id="modal-backdrop">
     <div class="modal">
-      <h2>Add recurring entry</h2>
+      <h2>${existing ? 'Edit recurring entry' : 'Add recurring entry'}</h2>
       <div class="form-group">
         <label>Type</label>
         <div class="type-toggle">
-          <button class="type-btn expense active" id="type-expense-btn">↑ Expense</button>
-          <button class="type-btn income" id="type-income-btn">↓ Income</button>
+          <button class="type-btn expense ${type==='expense'?'active':''}" id="type-expense-btn">↑ Expense</button>
+          <button class="type-btn income  ${type==='income' ?'active':''}" id="type-income-btn">↓ Income</button>
         </div>
       </div>
-      <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. Rent, Paycheck" /></div>
-      <div class="form-group"><label>Amount ($)</label><input id="f-amount" type="number" min="0" step="0.01" placeholder="0.00" /></div>
-      <div class="form-group"><label>Start date</label><input id="f-date" type="date" value="${todayStr()}" /></div>
-      <div class="form-group"><label>Frequency</label>
-        <select id="f-freq">
-          <option value="monthly">Monthly</option>
-          <option value="biweekly">Every 2 weeks</option>
-          <option value="weekly">Weekly</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Category</label>
-        <select id="f-cat">
-          <option>Housing</option><option>Food & dining</option><option>Transportation</option>
-          <option>Utilities</option><option>Healthcare</option><option>Entertainment</option>
-          <option>Shopping</option><option>Savings</option><option>Income</option><option>Other</option>
-        </select>
-      </div>
+      <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. Rent, Paycheck" value="${existing ? existing.name : ''}" /></div>
+      <div class="form-group"><label>Amount ($)</label><input id="f-amount" type="number" min="0" step="0.01" placeholder="0.00" value="${existing ? existing.amount : ''}" /></div>
+      <div class="form-group"><label>Start date</label><input id="f-date" type="date" value="${existing ? existing.startDate : todayStr()}" /></div>
+      <div class="form-group"><label>Frequency</label><select id="f-freq">${freqOpts}</select></div>
+      <div class="form-group"><label>Category</label><select id="f-cat">${catOpts}</select></div>
       <div class="modal-actions">
         <button class="btn-cancel" id="modal-cancel">Cancel</button>
-        <button class="btn-save" id="modal-save">Save recurring</button>
+        <button class="btn-save" id="modal-save">${existing ? 'Save changes' : 'Save recurring'}</button>
       </div>
     </div>
   </div>`;
@@ -638,14 +665,14 @@ function openRecurModal() {
   document.getElementById('modal-cancel').addEventListener('click', closeModal);
   document.getElementById('modal-backdrop').addEventListener('click', e => { if (e.target.id==='modal-backdrop') closeModal(); });
   document.getElementById('modal-save').addEventListener('click', async () => {
-    const name  = document.getElementById('f-name').value.trim();
-    const amount = parseFloat(document.getElementById('f-amount').value);
+    const name      = document.getElementById('f-name').value.trim();
+    const amount    = parseFloat(document.getElementById('f-amount').value);
     const startDate = document.getElementById('f-date').value;
-    const freq  = document.getElementById('f-freq').value;
-    const cat   = document.getElementById('f-cat').value;
+    const freq      = document.getElementById('f-freq').value;
+    const cat       = document.getElementById('f-cat').value;
     if (!name || !amount || !startDate) return;
-    const newRef = push(ref(db, 'recurring'));
-    await set(newRef, { id: newRef.key, type, name, amount, startDate, frequency: freq, category: cat, isRecurring: true });
+    const id = existing ? existing.id : ('r' + Date.now());
+    await set(ref(db, 'recurring/' + id), { id, type, name, amount, startDate, frequency: freq, category: cat, isRecurring: true });
     closeModal();
   });
 }
@@ -675,6 +702,10 @@ function handleClick(e) {
 
   // Add recurring
   if (e.target.closest('[data-action="add-recurring"]')) { openRecurModal(); return; }
+
+  // Edit recurring
+  const editRecur = e.target.closest('[data-action="edit-recurring"]');
+  if (editRecur) { openRecurModal(editRecur.dataset.id); return; }
 
   // Delete entry
   const delEntry = e.target.closest('[data-action="del-entry"]');

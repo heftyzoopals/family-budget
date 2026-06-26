@@ -368,6 +368,26 @@ function calcSummary(year, month) {
   return { income, expenses, balance: income - expenses };
 }
 
+// Projected balance = accountBalance + net of all entries AFTER today
+// Entries on or before today are assumed already reflected in the bank balance
+function calcProjected(accountBalance) {
+  const today = todayStr();
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  // Gather all remaining entries across this month AND future months up to year-end
+  // In practice we look at current month (remaining days) only — the balance is a
+  // snapshot, so we project to end of current month.
+  let futureNet = 0;
+  monthEntries(year, month).forEach(e => {
+    if (e.date > today) {
+      futureNet += e.type === 'income' ? +e.amount : -e.amount;
+    }
+  });
+  return accountBalance + futureNet;
+}
+
 // ─── Firebase init ────────────────────────
 function initFirebase(config) {
   const app = initializeApp(config);
@@ -452,7 +472,9 @@ function renderApp() {
 
   // Account balance card
   const acctVal = state.accountBalance;
-  const projected = acctVal !== null ? acctVal + balance : null;
+  const projected = acctVal !== null ? calcProjected(acctVal) : null;
+  const today = new Date();
+  const daysLeft = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - today.getDate();
   const acctCard = `
   <div class="acct-balance-card">
     <div class="left">
@@ -462,7 +484,7 @@ function renderApp() {
     </div>
     <div class="right">
       <button class="set-balance-btn" data-action="set-balance">✎ Update balance</button>
-      ${projected !== null ? `<div class="projected-chip">Projected end of month: <span class="${projected >= 0 ? 'pos' : 'neg'}">${projected < 0 ? '-' : ''}${fmt(projected)}</span></div>` : ''}
+      ${projected !== null ? `<div class="projected-chip">End of month (${daysLeft}d left): <span class="${projected >= 0 ? 'pos' : 'neg'}">${projected < 0 ? '-' : ''}${fmt(projected)}</span></div>` : ''}
     </div>
   </div>`;
 

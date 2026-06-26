@@ -30,8 +30,9 @@
       --radius-lg:  12px;
     }
 
+    /* System dark mode (when no manual preference saved) */
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not(.light) {
         --bg:         #141413;
         --surface:    #1e1e1c;
         --surface-2:  #252523;
@@ -50,6 +51,50 @@
         --purple-bg:  #3b1f6e;
       }
     }
+
+    /* Explicit dark mode class */
+    :root.dark {
+      --bg:         #141413;
+      --surface:    #1e1e1c;
+      --surface-2:  #252523;
+      --border:     #2e2e2b;
+      --border-strong: #3a3a36;
+      --text:       #f0f0ec;
+      --text-2:     #a0a09a;
+      --text-3:     #606060;
+      --green:      #4ade80;
+      --green-bg:   #14532d;
+      --red:        #f87171;
+      --red-bg:     #7f1d1d;
+      --blue:       #60a5fa;
+      --blue-bg:    #1e3a5f;
+      --purple:     #a78bfa;
+      --purple-bg:  #3b1f6e;
+    }
+
+    /* Theme toggle button */
+    .theme-btn { width: 32px; height: 32px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: var(--radius); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; transition: background .1s; flex-shrink: 0; }
+    .theme-btn:hover { background: var(--surface-2); }
+
+    /* Account balance card */
+    .acct-balance-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .acct-balance-card .left .lbl { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 4px; }
+    .acct-balance-card .left .val { font-size: 26px; font-weight: 600; letter-spacing: -.5px; color: var(--text); }
+    .acct-balance-card .left .sub { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+    .acct-balance-card .right { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+    .set-balance-btn { background: none; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 6px 12px; font-size: 12px; font-family: inherit; cursor: pointer; color: var(--text-2); font-weight: 500; white-space: nowrap; transition: background .1s; }
+    .set-balance-btn:hover { background: var(--surface-2); }
+    .projected-chip { font-size: 11px; color: var(--text-3); text-align: right; }
+    .projected-chip .pos { font-weight: 600; color: var(--green); }
+    .projected-chip .neg { font-weight: 600; color: var(--red); }
+
+    /* Day total footer */
+    .day-total-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 16px; border-top: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; gap: 6px; }
+    .day-total-row .dt-label { font-size: 12px; color: var(--text-3); font-weight: 500; }
+    .day-total-row .dt-values { display: flex; gap: 12px; font-size: 12px; font-weight: 600; }
+    .day-total-row .dt-income  { color: var(--green); }
+    .day-total-row .dt-expense { color: var(--red); }
+    .day-total-row .dt-net     { color: var(--text-2); padding-left: 10px; border-left: 1px solid var(--border); }
 
     body {
       font-family: 'Inter', system-ui, sans-serif;
@@ -219,6 +264,14 @@ import { getDatabase, ref, onValue, set, push, remove } from "https://www.gstati
 //  CONFIG — paste your Firebase config here
 // ─────────────────────────────────────────
 const FIREBASE_CONFIG_KEY = 'familybudget_firebase_config';
+const THEME_KEY = 'familybudget_theme';
+
+// Apply saved theme immediately to avoid flash
+(function() {
+  const t = localStorage.getItem(THEME_KEY);
+  if (t === 'dark') document.documentElement.classList.add('dark');
+  else if (t === 'light') document.documentElement.classList.add('light');
+})();
 
 function loadConfig() {
   try { return JSON.parse(localStorage.getItem(FIREBASE_CONFIG_KEY)); } catch { return null; }
@@ -227,11 +280,26 @@ function saveConfig(cfg) {
   localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(cfg));
 }
 
+function getTheme() { return localStorage.getItem(THEME_KEY) || 'system'; }
+function toggleTheme() {
+  const root = document.documentElement;
+  if (root.classList.contains('dark')) {
+    root.classList.remove('dark');
+    root.classList.add('light');
+    localStorage.setItem(THEME_KEY, 'light');
+  } else {
+    root.classList.remove('light');
+    root.classList.add('dark');
+    localStorage.setItem(THEME_KEY, 'dark');
+  }
+}
+
 // ─── State ───────────────────────────────
 let db = null;
 let state = {
   entries: {},
   recurring: {},
+  accountBalance: null,      // actual balance set by user, stored in Firebase
   currentYear: new Date().getFullYear(),
   currentMonth: new Date().getMonth(),
   selectedDate: null,
@@ -314,6 +382,10 @@ function initFirebase(config) {
     state.recurring = snap.val() || {};
     render();
   });
+  onValue(ref(db, 'accountBalance'), snap => {
+    state.accountBalance = snap.val();
+    render();
+  });
 }
 
 // ─── Render ──────────────────────────────
@@ -375,6 +447,24 @@ function attachSetup() {
 function renderApp() {
   const { currentYear: y, currentMonth: m, view } = state;
   const { income, expenses, balance } = calcSummary(y, m);
+  const isDark = document.documentElement.classList.contains('dark') ||
+    (!document.documentElement.classList.contains('light') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  // Account balance card
+  const acctVal = state.accountBalance;
+  const projected = acctVal !== null ? acctVal + balance : null;
+  const acctCard = `
+  <div class="acct-balance-card">
+    <div class="left">
+      <div class="lbl">Account balance</div>
+      <div class="val">${acctVal !== null ? fmt(acctVal) : '—'}</div>
+      <div class="sub">${acctVal !== null ? `Last updated by either partner` : 'Tap "Update" to set your current balance'}</div>
+    </div>
+    <div class="right">
+      <button class="set-balance-btn" data-action="set-balance">✎ Update balance</button>
+      ${projected !== null ? `<div class="projected-chip">Projected end of month: <span class="${projected >= 0 ? 'pos' : 'neg'}">${projected < 0 ? '-' : ''}${fmt(projected)}</span></div>` : ''}
+    </div>
+  </div>`;
 
   return `
   <div class="app-shell">
@@ -388,9 +478,12 @@ function renderApp() {
           <div class="sync-dot ${state.synced ? '' : 'offline'}"></div>
           ${state.synced ? 'Live sync on' : 'Connecting…'}
         </div>
+        <button class="theme-btn" id="theme-btn" title="Toggle dark/light mode">${isDark ? '☀️' : '🌙'}</button>
         <button class="nav-btn" id="disconnect-btn" title="Disconnect / change database" style="font-size:12px;width:auto;padding:0 10px;color:var(--text-3)">⚙</button>
       </div>
     </div>
+
+    ${acctCard}
 
     <div class="month-bar">
       <h2>${MONTHS[m]} ${y}</h2>
@@ -403,7 +496,7 @@ function renderApp() {
     <div class="summary-row">
       <div class="stat-card income"><div class="label">Income</div><div class="value">${fmt(income)}</div></div>
       <div class="stat-card expense"><div class="label">Expenses</div><div class="value">${fmt(expenses)}</div></div>
-      <div class="stat-card balance"><div class="label">Available</div><div class="value" style="color:${balance >= 0 ? 'var(--green)' : 'var(--red)'}">${balance < 0 ? '-' : ''}${fmt(balance)}</div></div>
+      <div class="stat-card balance"><div class="label">Net this month</div><div class="value" style="color:${balance >= 0 ? 'var(--green)' : 'var(--red)'}">${balance < 0 ? '-' : ''}${fmt(balance)}</div></div>
     </div>
 
     <div class="tab-bar">
@@ -469,6 +562,21 @@ function renderCalendar(y, m) {
     let rows = ents.length === 0
       ? `<div class="empty-state"><div class="icon">📋</div>No entries. Add income or an expense.</div>`
       : ents.map(entryRow).join('');
+
+    // Day totals
+    let dayInc = 0, dayExp = 0;
+    ents.forEach(e => { if (e.type==='income') dayInc += +e.amount; else dayExp += +e.amount; });
+    const dayNet = dayInc - dayExp;
+    const totalFooter = ents.length > 0 ? `
+    <div class="day-total-row">
+      <span class="dt-label">Day total</span>
+      <span class="dt-values">
+        <span class="dt-income">+${fmt(dayInc)}</span>
+        <span class="dt-expense">-${fmt(dayExp)}</span>
+        <span class="dt-net" style="color:${dayNet>=0?'var(--green)':'var(--red)'}">${dayNet<0?'-':''}${fmt(dayNet)}</span>
+      </span>
+    </div>` : '';
+
     detail = `
     <div class="panel">
       <div class="panel-header">
@@ -476,6 +584,7 @@ function renderCalendar(y, m) {
         <button class="add-btn" data-action="add-entry" data-date="${state.selectedDate}">+ Add entry</button>
       </div>
       ${rows}
+      ${totalFooter}
     </div>`;
   }
 
@@ -491,14 +600,36 @@ function renderList(y, m) {
   const ents = monthEntries(y, m).sort((a,b) => a.date > b.date ? 1 : -1);
   let rows = '';
   let lastDate = '';
+  let dayGroup = [];
+
+  function flushDayTotal() {
+    if (!dayGroup.length) return;
+    let inc = 0, exp = 0;
+    dayGroup.forEach(e => { if (e.type==='income') inc += +e.amount; else exp += +e.amount; });
+    const net = inc - exp;
+    rows += `<div class="day-total-row">
+      <span class="dt-label">Day total</span>
+      <span class="dt-values">
+        <span class="dt-income">+${fmt(inc)}</span>
+        <span class="dt-expense">-${fmt(exp)}</span>
+        <span class="dt-net" style="color:${net>=0?'var(--green)':'var(--red)'}">${net<0?'-':''}${fmt(net)}</span>
+      </span>
+    </div>`;
+    dayGroup = [];
+  }
+
   ents.forEach(e => {
     if (e.date !== lastDate) {
+      flushDayTotal();
       const d = new Date(e.date + 'T00:00:00');
       rows += `<div class="date-divider">${d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}</div>`;
       lastDate = e.date;
     }
     rows += entryRow(e);
+    dayGroup.push(e);
   });
+  flushDayTotal();
+
   if (!rows) rows = `<div class="empty-state"><div class="icon">📋</div>No entries this month yet.</div>`;
 
   return `<div class="panel">
@@ -677,6 +808,39 @@ function openRecurModal(existingId) {
   });
 }
 
+function openBalanceModal() {
+  const current = state.accountBalance;
+  document.getElementById('modal-root').innerHTML = `
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <h2>Update account balance</h2>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;line-height:1.5">Enter the actual balance from your bank account right now. Both you and your partner will see this, and the app will calculate your projected end-of-month balance from it.</p>
+      <div class="form-group">
+        <label>Current account balance ($)</label>
+        <input id="f-balance" type="number" step="0.01" placeholder="e.g. 3450.00" value="${current !== null ? current : ''}" />
+      </div>
+      <div class="form-group">
+        <label>Updated by</label>
+        <input id="f-balance-by" placeholder="Your name (optional)" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="modal-cancel">Cancel</button>
+        <button class="btn-save" id="modal-save">Save balance</button>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-backdrop').addEventListener('click', e => { if (e.target.id==='modal-backdrop') closeModal(); });
+  document.getElementById('modal-save').addEventListener('click', async () => {
+    const val = parseFloat(document.getElementById('f-balance').value);
+    if (isNaN(val)) return;
+    await set(ref(db, 'accountBalance'), val);
+    closeModal();
+  });
+  // Focus the input
+  setTimeout(() => document.getElementById('f-balance')?.focus(), 50);
+}
+
 function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
 
 // ─── Event delegation ─────────────────────
@@ -685,6 +849,12 @@ function attachApp() {
 }
 
 function handleClick(e) {
+  // Theme toggle
+  if (e.target.closest('#theme-btn')) { toggleTheme(); render(); return; }
+
+  // Set account balance
+  if (e.target.closest('[data-action="set-balance"]')) { openBalanceModal(); return; }
+
   // Tab switching
   const tab = e.target.closest('[data-view]');
   if (tab) { state.view = tab.dataset.view; state.selectedDate = null; render(); return; }

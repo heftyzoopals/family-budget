@@ -306,6 +306,7 @@ let state = {
   entries: {},
   recurring: {},
   accountBalance: null,      // actual balance set by user, stored in Firebase
+  monthlyBalances: {},       // { 'YYYY-MM': number } — carry-forward snapshots per month
   currentYear: new Date().getFullYear(),
   currentMonth: new Date().getMonth(),
   selectedDate: null,
@@ -378,88 +379,47 @@ function calcSummary(year, month) {
   return { income, expenses, balance: income - expenses };
 }
 
-// Projected balance = accountBalance + net of all entries AFTER today
+// Projected balance = starting balance for this month + net of all entries AFTER today
 // Entries on or before today are assumed already reflected in the bank balance
-function calcProjected(accountBalance) {
+function calcProjected(year, month) {
+  const startBal = getMonthStartBalance(year, month);
+  if (startBal === null) return null;
   const today = todayStr();
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-
-  // Gather all remaining entries across this month AND future months up to year-end
-  // In practice we look at current month (remaining days) only — the balance is a
-  // snapshot, so we project to end of current month.
+  // Only project remaining days if we're in the same month; otherwise project full month net
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
   let futureNet = 0;
   monthEntries(year, month).forEach(e => {
-    if (e.date > today) {
+    if (isCurrentMonth ? e.date > today : true) {
       futureNet += e.type === 'income' ? +e.amount : -e.amount;
     }
   });
-  return accountBalance + futureNet;
+  if (isCurrentMonth) return startBal + futureNet;
+  // For past/future months show end-of-month projected figure
+  const { balance: monthNet } = calcSummary(year, month);
+  return startBal + monthNet;
 }
 
-// Daily running balance = accountBalance + net of all entries from the day
-// after the balance was set up to and including the selected date.
-// If no account balance is set, falls back to pure net-from-month-start.
+// Daily running balance = month starting balance + net of all entries up to and including targetDate
 function calcDailyBalance(targetDate) {
-  const acct = state.accountBalance;
-  const today = todayStr();
   const [ty, tm] = targetDate.split('-').map(Number);
+  const year = ty, month = tm - 1;
+  const startBal = getMonthStartBalance(year, month);
 
-  if (acct !== null) {
-    // Sum every entry between (today + 1 day) and targetDate inclusive if target > today,
-    // or subtract entries from targetDate+1 to today if target <= today.
-    // Simplest correct approach: start from accountBalance (as of today) and walk.
+  if (startBal !== null) {
+    const today = todayStr();
+    // Sum all entries from start of month up to targetDate
     let net = 0;
-    if (targetDate > today) {
-      // Future: add entries after today up to targetDate
-      const year = ty, month = tm - 1;
-      monthEntries(year, month).forEach(e => {
-        if (e.date > today && e.date <= targetDate) {
-          net += e.type === 'income' ? +e.amount : -e.amount;
-        }
-      });
-      // Also check next month if targetDate spans months
-      const nowDate = new Date();
-      if (tm - 1 !== nowDate.getMonth() || ty !== nowDate.getFullYear()) {
-        const nowY = nowDate.getFullYear(), nowM = nowDate.getMonth();
-        monthEntries(nowY, nowM).forEach(e => {
-          if (e.date > today && e.date <= targetDate) {
-            net += e.type === 'income' ? +e.amount : -e.amount;
-          }
-        });
+    monthEntries(year, month).forEach(e => {
+      if (e.date <= targetDate) {
+        net += e.type === 'income' ? +e.amount : -e.amount;
       }
-    } else if (targetDate < today) {
-      // Past: subtract entries that happened after targetDate up to today
-      const nowDate = new Date();
-      const nowY = nowDate.getFullYear(), nowM = nowDate.getMonth();
-      monthEntries(nowY, nowM).forEach(e => {
-        if (e.date > targetDate && e.date <= today) {
-          net -= e.type === 'income' ? +e.amount : -e.amount;
-        }
-      });
-      // Also walk the selected month if different
-      if (tm - 1 !== nowM || ty !== nowY) {
-        monthEntries(ty, tm - 1).forEach(e => {
-          if (e.date > targetDate && e.date <= today) {
-            net -= e.type === 'income' ? +e.amount : -e.amount;
-          }
-        });
-      }
-    }
-    // targetDate === today: balance is exactly accountBalance + today's entries net
-    if (targetDate === today) {
-      monthEntries(ty, tm - 1).forEach(e => {
-        if (e.date === today) {
-          net += e.type === 'income' ? +e.amount : -e.amount;
-        }
-      });
-    }
-    return { value: acct + net, hasAcct: true };
+    });
+    return { value: startBal + net, hasAcct: true };
   } else {
-    // No account balance set — show cumulative net from start of that month
+    // No balance anchor — show cumulative net from start of that month
     let net = 0;
-    monthEntries(ty, tm - 1).forEach(e => {
+    monthEntries(year, month).forEach(e => {
       if (e.date <= targetDate) net += e.type === 'income' ? +e.amount : -e.amount;
     });
     return { value: net, hasAcct: false };
@@ -483,6 +443,63 @@ function initFirebase(config) {
     state.accountBalance = snap.val();
     render();
   });
+  onValue(ref(db, 'monthlyBalances'), snap => {
+    state.monthlyBalances = snap.val() || {};
+    render();
+  });
+}
+
+// ─── Carry-forward helpers ────────────────
+
+// Key format: 'YYYY-MM'
+function monthKey(year, month) {
+  return `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
+// Get the starting balance for a given month.
+// Priority: explicit monthlyBalances snapshot → carry-forward from previous month → accountBalance if it's the current month → null
+function getMonthStartBalance(year, month) {
+  const key = monthKey(year, month);
+  if (state.monthlyBalances[key] !== undefined) return state.monthlyBalances[key];
+
+  // Walk backward up to 24 months to find a saved anchor
+  for (let i = 1; i <= 24; i++) {
+    let y = year, m = month - i;
+    while (m < 0) { m += 12; y--; }
+    const k = monthKey(y, m);
+    if (state.monthlyBalances[k] !== undefined) {
+      // Found an anchor — chain forward month by month
+      let bal = state.monthlyBalances[k];
+      for (let j = i - 1; j >= 0; j--) {
+        let cy = year, cm = month - j;
+        while (cm < 0) { cm += 12; cy--; }
+        const { balance } = calcSummary(cy, cm);
+        bal += balance;
+      }
+      return bal;
+    }
+  }
+
+  // No saved anchor — use accountBalance for current month only
+  const now = new Date();
+  if (year === now.getFullYear() && month === now.getMonth()) {
+    return state.accountBalance; // may be null
+  }
+  return null;
+}
+
+// Save the end-of-month balance as the starting balance for next month.
+// Called when navigating away from a month or explicitly triggered.
+async function saveCarryForward(year, month) {
+  const startBal = getMonthStartBalance(year, month);
+  if (startBal === null) return;
+  const { balance: monthNet } = calcSummary(year, month);
+  const endBal = startBal + monthNet;
+  // Store as the start of NEXT month
+  let ny = year, nm = month + 1;
+  if (nm > 11) { nm = 0; ny++; }
+  const key = monthKey(ny, nm);
+  await set(ref(db, 'monthlyBalances/' + key), endBal);
 }
 
 // ─── Render ──────────────────────────────
@@ -549,19 +566,38 @@ function renderApp() {
 
   // Account balance card
   const acctVal = state.accountBalance;
-  const projected = acctVal !== null ? calcProjected(acctVal) : null;
-  const today = new Date();
-  const daysLeft = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - today.getDate();
+  const now = new Date();
+  const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
+  const startBal = getMonthStartBalance(y, m);
+  const projected = calcProjected(y, m);
+  const daysLeft = new Date(y, m + 1, 0).getDate() - (isCurrentMonth ? now.getDate() : 0);
+
+  // Carry-forward notice for non-current months
+  const prevM = m === 0 ? 11 : m - 1;
+  const prevY = m === 0 ? y - 1 : y;
+  const prevKey = monthKey(prevY, prevM);
+  const hasPrevBalance = state.monthlyBalances[prevKey] !== undefined;
+  const carryLabel = startBal !== null
+    ? (isCurrentMonth
+        ? `Carried in from ${MONTHS[prevM]}: ${startBal >= 0 ? '+' : ''}${fmt(startBal)}`
+        : `Starting balance: ${startBal >= 0 ? '+' : ''}${fmt(startBal)}`)
+    : null;
+
   const acctCard = `
   <div class="acct-balance-card">
     <div class="left">
-      <div class="lbl">Account balance</div>
-      <div class="val">${acctVal !== null ? fmt(acctVal) : '—'}</div>
-      <div class="sub">${acctVal !== null ? `Last updated by either partner` : 'Tap "Update" to set your current balance'}</div>
+      <div class="lbl">${isCurrentMonth ? 'Account balance' : `${MONTHS[m]} ${y} overview`}</div>
+      <div class="val">${isCurrentMonth ? (acctVal !== null ? fmt(acctVal) : '—') : (startBal !== null ? fmt(startBal) : '—')}</div>
+      <div class="sub">${isCurrentMonth
+        ? (acctVal !== null
+            ? (carryLabel || 'Last updated by either partner')
+            : 'Tap "Update" to set your current balance')
+        : (carryLabel || 'No starting balance on record')
+      }</div>
     </div>
     <div class="right">
-      <button class="set-balance-btn" data-action="set-balance">✎ Update balance</button>
-      ${projected !== null ? `<div class="projected-chip">End of month (${daysLeft}d left): <span class="${projected >= 0 ? 'pos' : 'neg'}">${projected < 0 ? '-' : ''}${fmt(projected)}</span></div>` : ''}
+      ${isCurrentMonth ? `<button class="set-balance-btn" data-action="set-balance">✎ Update balance</button>` : ''}
+      ${projected !== null ? `<div class="projected-chip">${isCurrentMonth ? `End of month (${daysLeft}d left)` : 'End of month'}: <span class="${projected >= 0 ? 'pos' : 'neg'}">${projected < 0 ? '-' : ''}${fmt(projected)}</span></div>` : ''}
     </div>
   </div>`;
 
@@ -969,6 +1005,10 @@ function openBalanceModal() {
     const val = parseFloat(document.getElementById('f-balance').value);
     if (isNaN(val)) return;
     await set(ref(db, 'accountBalance'), val);
+    // Anchor this as the starting balance for the current month so carry-forward chains from here
+    const now = new Date();
+    const key = monthKey(now.getFullYear(), now.getMonth());
+    await set(ref(db, 'monthlyBalances/' + key), val);
     closeModal();
   });
   // Focus the input
@@ -1079,7 +1119,7 @@ function attachApp() {
   document.addEventListener('click', handleClick);
 }
 
-function handleClick(e) {
+async function handleClick(e) {
   // Theme toggle
   if (e.target.closest('#theme-btn')) { toggleTheme(); render(); return; }
 
@@ -1133,11 +1173,13 @@ function handleClick(e) {
 
   // Month nav
   if (e.target.closest('#prev-btn')) {
+    await saveCarryForward(state.currentYear, state.currentMonth);
     state.currentMonth--;
     if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
     state.selectedDate = null; render(); return;
   }
   if (e.target.closest('#next-btn')) {
+    await saveCarryForward(state.currentYear, state.currentMonth);
     state.currentMonth++;
     if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
     state.selectedDate = null; render(); return;

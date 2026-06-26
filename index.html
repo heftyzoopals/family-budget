@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Family Budget</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #f7f7f5;
+      --surface:    #ffffff;
+      --surface-2:  #f2f2f0;
+      --border:     #e4e4e0;
+      --border-strong: #d0d0ca;
+      --text:       #1a1a18;
+      --text-2:     #5a5a56;
+      --text-3:     #9a9a94;
+      --green:      #16a34a;
+      --green-bg:   #dcfce7;
+      --red:        #dc2626;
+      --red-bg:     #fee2e2;
+      --blue:       #2563eb;
+      --blue-bg:    #dbeafe;
+      --purple:     #7c3aed;
+      --purple-bg:  #ede9fe;
+      --radius:     8px;
+      --radius-lg:  12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:         #141413;
+        --surface:    #1e1e1c;
+        --surface-2:  #252523;
+        --border:     #2e2e2b;
+        --border-strong: #3a3a36;
+        --text:       #f0f0ec;
+        --text-2:     #a0a09a;
+        --text-3:     #606060;
+        --green:      #4ade80;
+        --green-bg:   #14532d;
+        --red:        #f87171;
+        --red-bg:     #7f1d1d;
+        --blue:       #60a5fa;
+        --blue-bg:    #1e3a5f;
+        --purple:     #a78bfa;
+        --purple-bg:  #3b1f6e;
+      }
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ── */
+    .app-shell { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+
+    /* ── Header ── */
+    .app-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 12px; }
+    .app-header h1 { font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
+    .app-header p  { font-size: 13px; color: var(--text-3); margin-top: 2px; }
+    .sync-pill { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 5px 12px; font-size: 12px; color: var(--text-2); }
+    .sync-dot  { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+    .sync-dot.offline { background: var(--text-3); }
+
+    /* ── Month nav ── */
+    .month-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .month-bar h2 { font-size: 17px; font-weight: 600; }
+    .nav-btns { display: flex; gap: 6px; }
+    .nav-btn { width: 32px; height: 32px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: var(--radius); cursor: pointer; font-size: 16px; color: var(--text-2); display: flex; align-items: center; justify-content: center; transition: background .1s; }
+    .nav-btn:hover { background: var(--surface-2); }
+
+    /* ── Summary cards ── */
+    .summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+    .stat-card .label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 5px; }
+    .stat-card .value { font-size: 21px; font-weight: 600; letter-spacing: -.4px; }
+    .stat-card.income .value { color: var(--green); }
+    .stat-card.expense .value { color: var(--red); }
+    .stat-card.balance .value { color: var(--blue); }
+
+    /* ── Tabs ── */
+    .tab-bar { display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--radius); padding: 3px; margin-bottom: 1.25rem; }
+    .tab { flex: 1; padding: 7px 8px; background: none; border: none; border-radius: 6px; font-size: 13px; font-family: inherit; cursor: pointer; color: var(--text-2); transition: all .1s; font-weight: 500; }
+    .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .tab svg { vertical-align: -3px; margin-right: 4px; }
+
+    /* ── Calendar ── */
+    .calendar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.25rem; }
+    .cal-header { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--border); }
+    .cal-dname { padding: 8px 4px; text-align: center; font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .cal-cell { min-height: 68px; padding: 5px 6px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; position: relative; }
+    .cal-cell:nth-child(7n) { border-right: none; }
+    .cal-cell:hover { background: var(--surface-2); }
+    .cal-cell.faded .cal-num { opacity: .3; }
+    .cal-cell.today { background: var(--blue-bg); }
+    .cal-cell.today .cal-num { color: var(--blue); font-weight: 600; }
+    .cal-cell.selected { outline: 2px solid var(--blue); outline-offset: -2px; background: var(--blue-bg); }
+    .cal-num { font-size: 12px; color: var(--text-2); margin-bottom: 3px; font-weight: 500; }
+    .cal-pills { display: flex; flex-direction: column; gap: 2px; }
+    .cal-pill { font-size: 10px; border-radius: 3px; padding: 1px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+    .cal-pill.income  { background: var(--green-bg); color: var(--green); }
+    .cal-pill.expense { background: var(--red-bg);   color: var(--red);   }
+    .cal-pill.more    { color: var(--text-3); font-size: 9px; }
+
+    /* ── Section panel ── */
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 1rem; overflow: hidden; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid var(--border); }
+    .panel-header h3 { font-size: 14px; font-weight: 600; }
+    .add-btn { display: flex; align-items: center; gap: 5px; background: none; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 6px 12px; font-size: 12px; font-family: inherit; cursor: pointer; color: var(--text-2); font-weight: 500; transition: background .1s; }
+    .add-btn:hover { background: var(--surface-2); }
+
+    /* ── Entry rows ── */
+    .entry-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: default; transition: background .1s; }
+    .entry-row:hover { background: var(--surface-2); }
+    .entry-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
+    .entry-icon.income  { background: var(--green-bg); }
+    .entry-icon.expense { background: var(--red-bg); }
+    .entry-info { flex: 1; min-width: 0; }
+    .entry-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .entry-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+    .recur-tag { font-size: 10px; background: var(--purple-bg); color: var(--purple); border-radius: 3px; padding: 1px 5px; margin-left: 5px; vertical-align: middle; font-weight: 500; }
+    .entry-amount { font-size: 14px; font-weight: 600; flex-shrink: 0; }
+    .entry-amount.income  { color: var(--green); }
+    .entry-amount.expense { color: var(--red); }
+    .del-btn { background: none; border: none; cursor: pointer; color: var(--text-3); padding: 4px; border-radius: var(--radius); opacity: 0; font-size: 14px; transition: all .1s; line-height: 1; }
+    .entry-row:hover .del-btn { opacity: 1; }
+    .del-btn:hover { color: var(--red); background: var(--red-bg); }
+    .date-divider { padding: 7px 16px 3px; font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; border-top: 1px solid var(--border); margin-top: 2px; }
+    .date-divider:first-child { border-top: none; margin-top: 0; }
+    .empty-state { padding: 32px 16px; text-align: center; color: var(--text-3); font-size: 13px; }
+    .empty-state .icon { font-size: 28px; margin-bottom: 8px; }
+
+    /* ── Recurring rows ── */
+    .recur-row { display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-bottom: 1px solid var(--border); transition: background .1s; }
+    .recur-row:last-child { border-bottom: none; }
+    .recur-row:hover { background: var(--surface-2); }
+    .recur-row:hover .del-btn { opacity: 1; }
+    .recur-freq { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+    /* ── Modal ── */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 1rem; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; width: 360px; max-width: 100%; }
+    .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 1.25rem; }
+    .form-group { margin-bottom: 13px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 5px; }
+    .form-group input,
+    .form-group select { width: 100%; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s; }
+    .form-group input:focus,
+    .form-group select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-bg); }
+    .type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .type-btn { padding: 9px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: none; cursor: pointer; font-size: 13px; font-family: inherit; color: var(--text-2); font-weight: 500; transition: all .1s; }
+    .type-btn.active.expense { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+    .type-btn.active.income  { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+    .modal-actions { display: flex; gap: 8px; margin-top: 1.25rem; }
+    .modal-actions button { flex: 1; padding: 10px; border-radius: var(--radius); font-size: 13px; font-family: inherit; cursor: pointer; font-weight: 500; transition: all .1s; }
+    .btn-cancel { background: none; border: 1px solid var(--border-strong); color: var(--text-2); }
+    .btn-cancel:hover { background: var(--surface-2); }
+    .btn-save { background: var(--blue); border: none; color: #fff; }
+    .btn-save:hover { opacity: .9; }
+    .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+    .error-msg { font-size: 12px; color: var(--red); margin-top: 8px; }
+
+    /* ── Setup screen ── */
+    .setup-screen { max-width: 420px; margin: 4rem auto; padding: 0 1rem; }
+    .setup-screen h1 { font-size: 24px; font-weight: 600; margin-bottom: .5rem; }
+    .setup-screen p  { font-size: 14px; color: var(--text-2); margin-bottom: 1.5rem; line-height: 1.6; }
+    .setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; }
+    .setup-card h2 { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
+    .setup-card input { width: 100%; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; margin-bottom: 8px; outline: none; }
+    .setup-card input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-bg); }
+    .setup-card button { width: 100%; padding: 11px; background: var(--blue); border: none; border-radius: var(--radius); color: #fff; font-size: 14px; font-family: inherit; font-weight: 600; cursor: pointer; margin-top: 4px; }
+    .setup-card button:hover { opacity: .9; }
+    .step-label { display: inline-block; background: var(--blue-bg); color: var(--blue); font-size: 11px; font-weight: 600; border-radius: 99px; padding: 2px 9px; margin-bottom: 10px; }
+    .config-link { font-size: 12px; color: var(--text-3); text-align: center; margin-top: .75rem; }
+    .config-link a { color: var(--blue); text-decoration: none; }
+    .config-link a:hover { text-decoration: underline; }
+    .note-box { background: var(--blue-bg); border: 1px solid var(--blue); border-radius: var(--radius); padding: 10px 13px; font-size: 12px; color: var(--blue); margin-bottom: 1rem; line-height: 1.5; }
+
+    /* ── Loading ── */
+    .spinner { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 12px; color: var(--text-3); font-size: 14px; }
+    .spin { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .summary-row { grid-template-columns: 1fr 1fr; }
+      .stat-card.balance { grid-column: 1 / -1; }
+      .stat-card .value { font-size: 18px; }
+      .cal-cell { min-height: 54px; }
+      .cal-pill { display: none; }
+      .cal-cell.has-entries::after { content: '•'; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--text-3); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ─────────────────────────────────────────
+//  CONFIG — paste your Firebase config here
+// ─────────────────────────────────────────
+const FIREBASE_CONFIG_KEY = 'familybudget_firebase_config';
+
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem(FIREBASE_CONFIG_KEY)); } catch { return null; }
+}
+function saveConfig(cfg) {
+  localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(cfg));
+}
+
+// ─── State ───────────────────────────────
+let db = null;
+let state = {
+  entries: {},
+  recurring: {},
+  currentYear: new Date().getFullYear(),
+  currentMonth: new Date().getMonth(),
+  selectedDate: null,
+  view: 'calendar',
+  synced: false,
+};
+
+// ─── Helpers ─────────────────────────────
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+function fmt(n) {
+  return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function pad(n) { return String(n).padStart(2, '0'); }
+function dateStr(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
+function todayStr() { const t = new Date(); return dateStr(t.getFullYear(), t.getMonth(), t.getDate()); }
+
+// ─── Recurring expansion ─────────────────
+function expandRecurring(year, month) {
+  const expanded = [];
+  Object.values(state.recurring).forEach(r => {
+    const start = new Date(r.startDate + 'T00:00:00');
+    let d = new Date(start);
+    const monthEnd = new Date(year, month + 1, 0);
+    const monthStart = new Date(year, month, 1);
+    let safety = 0;
+    while (d <= monthEnd && safety++ < 200) {
+      if (d >= monthStart) {
+        expanded.push({ ...r, id: r.id + '_' + d.toISOString().slice(0,10), date: d.toISOString().slice(0,10), isInstance: true });
+      }
+      if (r.frequency === 'weekly')     d.setDate(d.getDate() + 7);
+      else if (r.frequency === 'biweekly') d.setDate(d.getDate() + 14);
+      else if (r.frequency === 'monthly')  { d.setMonth(d.getMonth() + 1); }
+      else break;
+    }
+  });
+  return expanded;
+}
+
+function monthEntries(year, month) {
+  const manual = Object.values(state.entries).filter(e => {
+    const [ey, em] = e.date.split('-').map(Number);
+    return ey === year && em === month + 1;
+  });
+  return [...manual, ...expandRecurring(year, month)];
+}
+
+function dayEntries(dateS) {
+  const [y, m] = dateS.split('-').map(Number);
+  return monthEntries(y, m - 1).filter(e => e.date === dateS);
+}
+
+function calcSummary(year, month) {
+  let income = 0, expenses = 0;
+  monthEntries(year, month).forEach(e => {
+    if (e.type === 'income') income += +e.amount;
+    else expenses += +e.amount;
+  });
+  return { income, expenses, balance: income - expenses };
+}
+
+// ─── Firebase init ────────────────────────
+function initFirebase(config) {
+  const app = initializeApp(config);
+  db = getDatabase(app);
+
+  onValue(ref(db, 'entries'), snap => {
+    state.entries = snap.val() || {};
+    state.synced = true;
+    render();
+  });
+  onValue(ref(db, 'recurring'), snap => {
+    state.recurring = snap.val() || {};
+    render();
+  });
+}
+
+// ─── Render ──────────────────────────────
+function render() {
+  const root = document.getElementById('root');
+  if (!loadConfig()) { root.innerHTML = renderSetup(); attachSetup(); return; }
+  if (!state.synced)  { root.innerHTML = `<div class="spinner"><div class="spin"></div>Connecting to your budget…</div>`; return; }
+  root.innerHTML = renderApp();
+  attachApp();
+}
+
+function renderSetup() {
+  return `
+  <div class="setup-screen">
+    <h1>Family Budget</h1>
+    <p>Connect your Firebase database to get started. Both you and your partner will share the same data in real time.</p>
+    <div class="note-box">📋 See the <strong>SETUP.md</strong> file included in this project for step-by-step Firebase instructions.</div>
+    <div class="setup-card">
+      <span class="step-label">Firebase config</span>
+      <h2>Paste your Firebase config</h2>
+      <input id="cfg-apiKey"            placeholder="apiKey" />
+      <input id="cfg-authDomain"        placeholder="authDomain" />
+      <input id="cfg-databaseURL"       placeholder="databaseURL  ← required" />
+      <input id="cfg-projectId"         placeholder="projectId" />
+      <input id="cfg-storageBucket"     placeholder="storageBucket" />
+      <input id="cfg-messagingSenderId" placeholder="messagingSenderId" />
+      <input id="cfg-appId"             placeholder="appId" />
+      <div id="cfg-error" class="error-msg" style="display:none"></div>
+      <button id="cfg-save-btn">Connect and open budget →</button>
+    </div>
+    <p class="config-link">Need help? Open <strong>SETUP.md</strong> in this project for a step-by-step walkthrough.</p>
+  </div>`;
+}
+
+function attachSetup() {
+  document.getElementById('cfg-save-btn').addEventListener('click', () => {
+    const get = id => document.getElementById(id).value.trim();
+    const cfg = {
+      apiKey:            get('cfg-apiKey'),
+      authDomain:        get('cfg-authDomain'),
+      databaseURL:       get('cfg-databaseURL'),
+      projectId:         get('cfg-projectId'),
+      storageBucket:     get('cfg-storageBucket'),
+      messagingSenderId: get('cfg-messagingSenderId'),
+      appId:             get('cfg-appId'),
+    };
+    if (!cfg.databaseURL) {
+      const err = document.getElementById('cfg-error');
+      err.textContent = 'databaseURL is required — it looks like https://your-project-default-rtdb.firebaseio.com';
+      err.style.display = 'block';
+      return;
+    }
+    saveConfig(cfg);
+    initFirebase(cfg);
+    render();
+  });
+}
+
+function renderApp() {
+  const { currentYear: y, currentMonth: m, view } = state;
+  const { income, expenses, balance } = calcSummary(y, m);
+
+  return `
+  <div class="app-shell">
+    <div class="app-header">
+      <div>
+        <h1>Family budget</h1>
+        <p>${MONTHS[m]} ${y}</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="sync-pill">
+          <div class="sync-dot ${state.synced ? '' : 'offline'}"></div>
+          ${state.synced ? 'Live sync on' : 'Connecting…'}
+        </div>
+        <button class="nav-btn" id="disconnect-btn" title="Disconnect / change database" style="font-size:12px;width:auto;padding:0 10px;color:var(--text-3)">⚙</button>
+      </div>
+    </div>
+
+    <div class="month-bar">
+      <h2>${MONTHS[m]} ${y}</h2>
+      <div class="nav-btns">
+        <button class="nav-btn" id="prev-btn">&#8249;</button>
+        <button class="nav-btn" id="next-btn">&#8250;</button>
+      </div>
+    </div>
+
+    <div class="summary-row">
+      <div class="stat-card income"><div class="label">Income</div><div class="value">${fmt(income)}</div></div>
+      <div class="stat-card expense"><div class="label">Expenses</div><div class="value">${fmt(expenses)}</div></div>
+      <div class="stat-card balance"><div class="label">Available</div><div class="value" style="color:${balance >= 0 ? 'var(--green)' : 'var(--red)'}">${balance < 0 ? '-' : ''}${fmt(balance)}</div></div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab ${view==='calendar'?'active':''}" data-view="calendar">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>Calendar
+      </button>
+      <button class="tab ${view==='list'?'active':''}" data-view="list">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 4h12M2 8h12M2 12h7"/></svg>All entries
+      </button>
+      <button class="tab ${view==='recurring'?'active':''}" data-view="recurring">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8a6 6 0 1 0 6-6"/><path d="M8 1l-2 2 2 2"/></svg>Recurring
+      </button>
+    </div>
+
+    ${ view==='calendar' ? renderCalendar(y, m) : view==='list' ? renderList(y, m) : renderRecurring() }
+  </div>
+
+  <div id="modal-root"></div>`;
+}
+
+function renderCalendar(y, m) {
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const prevDays = new Date(y, m, 0).getDate();
+  const today = todayStr();
+
+  const allEntries = monthEntries(y, m);
+  const byDay = {};
+  allEntries.forEach(e => { (byDay[e.date] = byDay[e.date] || []).push(e); });
+
+  let cells = [];
+  for (let i = firstDay - 1; i >= 0; i--) cells.push({ n: prevDays - i, cur: false });
+  for (let i = 1; i <= daysInMonth; i++) cells.push({ n: i, cur: true });
+  while ((cells.length % 7) !== 0) cells.push({ n: cells.length - daysInMonth - firstDay + 1, cur: false });
+
+  let grid = '';
+  cells.forEach(c => {
+    const ds = c.cur ? dateStr(y, m, c.n) : '';
+    const isToday = ds === today;
+    const isSel   = ds === state.selectedDate;
+    const ents    = byDay[ds] || [];
+    const hasEnts = ents.length > 0;
+
+    let pills = '';
+    ents.slice(0, 2).forEach(e => {
+      const label = e.name.length > 9 ? e.name.slice(0,9)+'…' : e.name;
+      pills += `<div class="cal-pill ${e.type}">${e.type==='income'?'+':'-'} ${label}</div>`;
+    });
+    if (ents.length > 2) pills += `<div class="cal-pill more">+${ents.length-2}</div>`;
+
+    grid += `<div class="cal-cell ${!c.cur?'faded':''} ${isToday?'today':''} ${isSel?'selected':''} ${hasEnts&&!pills?'has-entries':''}"
+      ${c.cur ? `data-date="${ds}"` : ''}
+      role="${c.cur?'button':''}" tabindex="${c.cur?'0':''}">
+      <div class="cal-num">${c.n}</div>
+      <div class="cal-pills">${pills}</div>
+    </div>`;
+  });
+
+  let detail = '';
+  if (state.selectedDate) {
+    const ents = dayEntries(state.selectedDate);
+    const label = new Date(state.selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+    let rows = ents.length === 0
+      ? `<div class="empty-state"><div class="icon">📋</div>No entries. Add income or an expense.</div>`
+      : ents.map(entryRow).join('');
+    detail = `
+    <div class="panel">
+      <div class="panel-header">
+        <h3>${label}</h3>
+        <button class="add-btn" data-action="add-entry" data-date="${state.selectedDate}">+ Add entry</button>
+      </div>
+      ${rows}
+    </div>`;
+  }
+
+  return `
+  <div class="calendar">
+    <div class="cal-header">${DAYS.map(d => `<div class="cal-dname">${d}</div>`).join('')}</div>
+    <div class="cal-grid">${grid}</div>
+  </div>
+  ${detail}`;
+}
+
+function renderList(y, m) {
+  const ents = monthEntries(y, m).sort((a,b) => a.date > b.date ? 1 : -1);
+  let rows = '';
+  let lastDate = '';
+  ents.forEach(e => {
+    if (e.date !== lastDate) {
+      const d = new Date(e.date + 'T00:00:00');
+      rows += `<div class="date-divider">${d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}</div>`;
+      lastDate = e.date;
+    }
+    rows += entryRow(e);
+  });
+  if (!rows) rows = `<div class="empty-state"><div class="icon">📋</div>No entries this month yet.</div>`;
+
+  return `<div class="panel">
+    <div class="panel-header"><h3>All entries — ${MONTHS[m]}</h3>
+      <button class="add-btn" data-action="add-entry" data-date="${todayStr()}">+ Add entry</button>
+    </div>
+    ${rows}
+  </div>`;
+}
+
+function renderRecurring() {
+  const freqLabel = { weekly: 'Every week', biweekly: 'Every 2 weeks', monthly: 'Every month' };
+  const rows = Object.values(state.recurring).map(r => `
+    <div class="recur-row">
+      <div class="entry-icon ${r.type}">${r.type==='income'?'↓':'↑'}</div>
+      <div class="entry-info">
+        <div class="entry-name">${r.name}</div>
+        <div class="recur-freq">${freqLabel[r.frequency]||r.frequency} · from ${r.startDate} · ${r.category}</div>
+      </div>
+      <div class="entry-amount ${r.type}">${r.type==='income'?'+':'-'}${fmt(+r.amount)}</div>
+      <button class="del-btn" data-action="del-recurring" data-id="${r.id}">✕</button>
+    </div>`).join('');
+
+  return `<div class="panel">
+    <div class="panel-header"><h3>Recurring income & expenses</h3>
+      <button class="add-btn" data-action="add-recurring">+ Add recurring</button>
+    </div>
+    ${rows || '<div class="empty-state"><div class="icon">🔄</div>Add recurring items like rent, salary, or subscriptions.</div>'}
+  </div>`;
+}
+
+function entryRow(e) {
+  const recurTag = (e.isRecurring || e.isInstance) ? `<span class="recur-tag">recurring</span>` : '';
+  const by = e.addedBy ? ` · ${e.addedBy}` : '';
+  const del = !e.isInstance
+    ? `<button class="del-btn" data-action="del-entry" data-id="${e.id}">✕</button>`
+    : '<span style="width:22px;flex-shrink:0"></span>';
+  return `<div class="entry-row">
+    <div class="entry-icon ${e.type}">${e.type==='income'?'↓':'↑'}</div>
+    <div class="entry-info">
+      <div class="entry-name">${e.name}${recurTag}</div>
+      <div class="entry-meta">${e.category||'Uncategorized'}${by}</div>
+    </div>
+    <div class="entry-amount ${e.type}">${e.type==='income'?'+':'-'}${fmt(+e.amount)}</div>
+    ${del}
+  </div>`;
+}
+
+// ─── Modals ───────────────────────────────
+function openEntryModal(defaultDate) {
+  let type = 'expense';
+  document.getElementById('modal-root').innerHTML = `
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <h2>Add entry</h2>
+      <div class="form-group">
+        <label>Type</label>
+        <div class="type-toggle">
+          <button class="type-btn expense active" id="type-expense-btn">↑ Expense</button>
+          <button class="type-btn income" id="type-income-btn">↓ Income</button>
+        </div>
+      </div>
+      <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. Groceries" /></div>
+      <div class="form-group"><label>Amount ($)</label><input id="f-amount" type="number" min="0" step="0.01" placeholder="0.00" /></div>
+      <div class="form-group"><label>Date</label><input id="f-date" type="date" value="${defaultDate}" /></div>
+      <div class="form-group"><label>Category</label>
+        <select id="f-cat">
+          <option>Housing</option><option>Food & dining</option><option>Transportation</option>
+          <option>Utilities</option><option>Healthcare</option><option>Entertainment</option>
+          <option>Shopping</option><option>Savings</option><option>Income</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Added by</label><input id="f-by" placeholder="Your name (optional)" /></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="modal-cancel">Cancel</button>
+        <button class="btn-save" id="modal-save">Save entry</button>
+      </div>
+    </div>
+  </div>`;
+
+  const setType = t => {
+    type = t;
+    document.getElementById('type-expense-btn').className = 'type-btn expense' + (t==='expense'?' active':'');
+    document.getElementById('type-income-btn').className  = 'type-btn income'  + (t==='income' ?' active':'');
+  };
+  document.getElementById('type-expense-btn').addEventListener('click', () => setType('expense'));
+  document.getElementById('type-income-btn').addEventListener('click',  () => setType('income'));
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-backdrop').addEventListener('click', e => { if (e.target.id==='modal-backdrop') closeModal(); });
+  document.getElementById('modal-save').addEventListener('click', async () => {
+    const name   = document.getElementById('f-name').value.trim();
+    const amount = parseFloat(document.getElementById('f-amount').value);
+    const date   = document.getElementById('f-date').value;
+    const cat    = document.getElementById('f-cat').value;
+    const by     = document.getElementById('f-by').value.trim();
+    if (!name || !amount || !date) return;
+    const newRef = push(ref(db, 'entries'));
+    await set(newRef, { id: newRef.key, type, name, amount, date, category: cat, addedBy: by, createdAt: Date.now() });
+    closeModal();
+  });
+}
+
+function openRecurModal() {
+  let type = 'expense';
+  document.getElementById('modal-root').innerHTML = `
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <h2>Add recurring entry</h2>
+      <div class="form-group">
+        <label>Type</label>
+        <div class="type-toggle">
+          <button class="type-btn expense active" id="type-expense-btn">↑ Expense</button>
+          <button class="type-btn income" id="type-income-btn">↓ Income</button>
+        </div>
+      </div>
+      <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. Rent, Paycheck" /></div>
+      <div class="form-group"><label>Amount ($)</label><input id="f-amount" type="number" min="0" step="0.01" placeholder="0.00" /></div>
+      <div class="form-group"><label>Start date</label><input id="f-date" type="date" value="${todayStr()}" /></div>
+      <div class="form-group"><label>Frequency</label>
+        <select id="f-freq">
+          <option value="monthly">Monthly</option>
+          <option value="biweekly">Every 2 weeks</option>
+          <option value="weekly">Weekly</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Category</label>
+        <select id="f-cat">
+          <option>Housing</option><option>Food & dining</option><option>Transportation</option>
+          <option>Utilities</option><option>Healthcare</option><option>Entertainment</option>
+          <option>Shopping</option><option>Savings</option><option>Income</option><option>Other</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="modal-cancel">Cancel</button>
+        <button class="btn-save" id="modal-save">Save recurring</button>
+      </div>
+    </div>
+  </div>`;
+
+  const setType = t => {
+    type = t;
+    document.getElementById('type-expense-btn').className = 'type-btn expense' + (t==='expense'?' active':'');
+    document.getElementById('type-income-btn').className  = 'type-btn income'  + (t==='income' ?' active':'');
+  };
+  document.getElementById('type-expense-btn').addEventListener('click', () => setType('expense'));
+  document.getElementById('type-income-btn').addEventListener('click',  () => setType('income'));
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-backdrop').addEventListener('click', e => { if (e.target.id==='modal-backdrop') closeModal(); });
+  document.getElementById('modal-save').addEventListener('click', async () => {
+    const name  = document.getElementById('f-name').value.trim();
+    const amount = parseFloat(document.getElementById('f-amount').value);
+    const startDate = document.getElementById('f-date').value;
+    const freq  = document.getElementById('f-freq').value;
+    const cat   = document.getElementById('f-cat').value;
+    if (!name || !amount || !startDate) return;
+    const newRef = push(ref(db, 'recurring'));
+    await set(newRef, { id: newRef.key, type, name, amount, startDate, frequency: freq, category: cat, isRecurring: true });
+    closeModal();
+  });
+}
+
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+
+// ─── Event delegation ─────────────────────
+function attachApp() {
+  document.addEventListener('click', handleClick);
+}
+
+function handleClick(e) {
+  // Tab switching
+  const tab = e.target.closest('[data-view]');
+  if (tab) { state.view = tab.dataset.view; state.selectedDate = null; render(); return; }
+
+  // Calendar day select
+  const cell = e.target.closest('.cal-cell[data-date]');
+  if (cell) {
+    state.selectedDate = state.selectedDate === cell.dataset.date ? null : cell.dataset.date;
+    render(); return;
+  }
+
+  // Add entry
+  const addBtn = e.target.closest('[data-action="add-entry"]');
+  if (addBtn) { openEntryModal(addBtn.dataset.date || todayStr()); return; }
+
+  // Add recurring
+  if (e.target.closest('[data-action="add-recurring"]')) { openRecurModal(); return; }
+
+  // Delete entry
+  const delEntry = e.target.closest('[data-action="del-entry"]');
+  if (delEntry) { remove(ref(db, 'entries/' + delEntry.dataset.id)); return; }
+
+  // Delete recurring
+  const delRecur = e.target.closest('[data-action="del-recurring"]');
+  if (delRecur) { remove(ref(db, 'recurring/' + delRecur.dataset.id)); return; }
+
+  // Disconnect
+  if (e.target.closest('#disconnect-btn')) {
+    if (confirm('Disconnect from Firebase? Your data stays safe in the database.')) {
+      localStorage.removeItem(FIREBASE_CONFIG_KEY);
+      state.synced = false;
+      db = null;
+      render();
+    }
+    return;
+  }
+
+  // Month nav
+  if (e.target.closest('#prev-btn')) {
+    state.currentMonth--;
+    if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
+    state.selectedDate = null; render(); return;
+  }
+  if (e.target.closest('#next-btn')) {
+    state.currentMonth++;
+    if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
+    state.selectedDate = null; render(); return;
+  }
+}
+
+// ─── Boot ─────────────────────────────────
+const savedConfig = loadConfig();
+if (savedConfig) {
+  initFirebase(savedConfig);
+} else {
+  render();
+}
+</script>
+</body>
+</html>

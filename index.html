@@ -88,6 +88,12 @@
     .projected-chip .pos { font-weight: 600; color: var(--green); }
     .projected-chip .neg { font-weight: 600; color: var(--red); }
 
+    /* Day balance banner */
+    .day-balance-banner { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); gap: 10px; flex-wrap: wrap; }
+    .day-balance-banner .dbb-label { font-size: 12px; color: var(--text-3); font-weight: 500; }
+    .day-balance-banner .dbb-value { font-size: 20px; font-weight: 600; letter-spacing: -.3px; }
+    .day-balance-banner .dbb-note  { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
     /* Day total footer */
     .day-total-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 16px; border-top: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; gap: 6px; }
     .day-total-row .dt-label { font-size: 12px; color: var(--text-3); font-weight: 500; }
@@ -326,10 +332,14 @@ function expandRecurring(year, month) {
     let d = new Date(start);
     const monthEnd   = new Date(year, month + 1, 0);
     const monthStart = new Date(year, month, 1);
+    const endDate    = r.endDate ? new Date(r.endDate + 'T00:00:00') : null;
+    const skipped    = r.skippedDates || {};
     let safety = 0;
     while (d <= monthEnd && safety++ < 500) {
-      if (d >= monthStart) {
-        expanded.push({ ...r, id: r.id + '_' + d.toISOString().slice(0,10), date: d.toISOString().slice(0,10), isInstance: true });
+      if (endDate && d > endDate) break;
+      const ds = d.toISOString().slice(0, 10);
+      if (d >= monthStart && !skipped[ds]) {
+        expanded.push({ ...r, id: r.id + '_' + ds, date: ds, isInstance: true });
       }
       const freq = r.frequency;
       if      (freq === 'weekly')      d.setDate(d.getDate() + 7);
@@ -388,7 +398,74 @@ function calcProjected(accountBalance) {
   return accountBalance + futureNet;
 }
 
-// ─── Firebase init ────────────────────────
+// Daily running balance = accountBalance + net of all entries from the day
+// after the balance was set up to and including the selected date.
+// If no account balance is set, falls back to pure net-from-month-start.
+function calcDailyBalance(targetDate) {
+  const acct = state.accountBalance;
+  const today = todayStr();
+  const [ty, tm] = targetDate.split('-').map(Number);
+
+  if (acct !== null) {
+    // Sum every entry between (today + 1 day) and targetDate inclusive if target > today,
+    // or subtract entries from targetDate+1 to today if target <= today.
+    // Simplest correct approach: start from accountBalance (as of today) and walk.
+    let net = 0;
+    if (targetDate > today) {
+      // Future: add entries after today up to targetDate
+      const year = ty, month = tm - 1;
+      monthEntries(year, month).forEach(e => {
+        if (e.date > today && e.date <= targetDate) {
+          net += e.type === 'income' ? +e.amount : -e.amount;
+        }
+      });
+      // Also check next month if targetDate spans months
+      const nowDate = new Date();
+      if (tm - 1 !== nowDate.getMonth() || ty !== nowDate.getFullYear()) {
+        const nowY = nowDate.getFullYear(), nowM = nowDate.getMonth();
+        monthEntries(nowY, nowM).forEach(e => {
+          if (e.date > today && e.date <= targetDate) {
+            net += e.type === 'income' ? +e.amount : -e.amount;
+          }
+        });
+      }
+    } else if (targetDate < today) {
+      // Past: subtract entries that happened after targetDate up to today
+      const nowDate = new Date();
+      const nowY = nowDate.getFullYear(), nowM = nowDate.getMonth();
+      monthEntries(nowY, nowM).forEach(e => {
+        if (e.date > targetDate && e.date <= today) {
+          net -= e.type === 'income' ? +e.amount : -e.amount;
+        }
+      });
+      // Also walk the selected month if different
+      if (tm - 1 !== nowM || ty !== nowY) {
+        monthEntries(ty, tm - 1).forEach(e => {
+          if (e.date > targetDate && e.date <= today) {
+            net -= e.type === 'income' ? +e.amount : -e.amount;
+          }
+        });
+      }
+    }
+    // targetDate === today: balance is exactly accountBalance + today's entries net
+    if (targetDate === today) {
+      monthEntries(ty, tm - 1).forEach(e => {
+        if (e.date === today) {
+          net += e.type === 'income' ? +e.amount : -e.amount;
+        }
+      });
+    }
+    return { value: acct + net, hasAcct: true };
+  } else {
+    // No account balance set — show cumulative net from start of that month
+    let net = 0;
+    monthEntries(ty, tm - 1).forEach(e => {
+      if (e.date <= targetDate) net += e.type === 'income' ? +e.amount : -e.amount;
+    });
+    return { value: net, hasAcct: false };
+  }
+}
+
 function initFirebase(config) {
   const app = initializeApp(config);
   db = getDatabase(app);
@@ -599,12 +676,33 @@ function renderCalendar(y, m) {
       </span>
     </div>` : '';
 
+    // Daily running balance banner
+    const { value: dayBal, hasAcct } = calcDailyBalance(state.selectedDate);
+    const today = todayStr();
+    const isPast   = state.selectedDate <  today;
+    const isFuture = state.selectedDate >  today;
+    const isToday  = state.selectedDate === today;
+    const noteText = hasAcct
+      ? (isPast   ? 'Estimated balance at end of this day'
+        : isToday ? 'Estimated balance including today\'s entries'
+        :           'Projected balance after this day\'s entries')
+      : 'Month-to-date net (set account balance for a real figure)';
+    const balBanner = `
+    <div class="day-balance-banner">
+      <div>
+        <div class="dbb-label">${isToday ? 'Balance today' : isPast ? 'Balance that day' : 'Projected balance'}</div>
+        <div class="dbb-note">${noteText}</div>
+      </div>
+      <div class="dbb-value" style="color:${dayBal >= 0 ? 'var(--green)' : 'var(--red)'}">${dayBal < 0 ? '-' : ''}${fmt(dayBal)}</div>
+    </div>`;
+
     detail = `
     <div class="panel">
       <div class="panel-header">
         <h3>${label}</h3>
         <button class="add-btn" data-action="add-entry" data-date="${state.selectedDate}">+ Add entry</button>
       </div>
+      ${balBanner}
       ${rows}
       ${totalFooter}
     </div>`;
@@ -673,7 +771,7 @@ function renderRecurring() {
       <div class="entry-icon ${r.type}">${r.type==='income'?'↓':'↑'}</div>
       <div class="entry-info">
         <div class="entry-name">${r.name}</div>
-        <div class="recur-freq">${freqLabel[r.frequency]||r.frequency} · from ${r.startDate} · ${r.category}</div>
+        <div class="recur-freq">${freqLabel[r.frequency]||r.frequency} · from ${r.startDate}${r.endDate ? ' · ends ' + r.endDate : ''} · ${r.category}</div>
       </div>
       <div class="entry-amount ${r.type}">${r.type==='income'?'+':'-'}${fmt(+r.amount)}</div>
       <div class="recur-actions">
@@ -693,9 +791,14 @@ function renderRecurring() {
 function entryRow(e) {
   const recurTag = (e.isRecurring || e.isInstance) ? `<span class="recur-tag">recurring</span>` : '';
   const by = e.addedBy ? ` · ${e.addedBy}` : '';
-  const del = !e.isInstance
-    ? `<button class="del-btn" data-action="del-entry" data-id="${e.id}">✕</button>`
-    : '<span style="width:22px;flex-shrink:0"></span>';
+  let del;
+  if (e.isInstance) {
+    // Parse the base recurring ID (everything before the last _YYYY-MM-DD)
+    const baseId = e.id.replace(/_\d{4}-\d{2}-\d{2}$/, '');
+    del = `<button class="del-btn" data-action="del-instance" data-base-id="${baseId}" data-date="${e.date}" title="Remove this occurrence">✕</button>`;
+  } else {
+    del = `<button class="del-btn" data-action="del-entry" data-id="${e.id}">✕</button>`;
+  }
   return `<div class="entry-row">
     <div class="entry-icon ${e.type}">${e.type==='income'?'↓':'↑'}</div>
     <div class="entry-info">
@@ -801,6 +904,10 @@ function openRecurModal(existingId) {
       <div class="form-group"><label>Start date</label><input id="f-date" type="date" value="${existing ? existing.startDate : todayStr()}" /></div>
       <div class="form-group"><label>Frequency</label><select id="f-freq">${freqOpts}</select></div>
       <div class="form-group"><label>Category</label><select id="f-cat">${catOpts}</select></div>
+      <div class="form-group">
+        <label>End date <span style="font-weight:400;color:var(--text-3)">(optional — leave blank to repeat forever)</span></label>
+        <input id="f-end-date" type="date" value="${existing && existing.endDate ? existing.endDate : ''}" />
+      </div>
       <div class="modal-actions">
         <button class="btn-cancel" id="modal-cancel">Cancel</button>
         <button class="btn-save" id="modal-save">${existing ? 'Save changes' : 'Save recurring'}</button>
@@ -823,9 +930,14 @@ function openRecurModal(existingId) {
     const startDate = document.getElementById('f-date').value;
     const freq      = document.getElementById('f-freq').value;
     const cat       = document.getElementById('f-cat').value;
+    const endDate   = document.getElementById('f-end-date').value || null;
     if (!name || !amount || !startDate) return;
     const id = existing ? existing.id : ('r' + Date.now());
-    await set(ref(db, 'recurring/' + id), { id, type, name, amount, startDate, frequency: freq, category: cat, isRecurring: true });
+    const payload = { id, type, name, amount, startDate, frequency: freq, category: cat, isRecurring: true };
+    if (endDate) payload.endDate = endDate;
+    // Preserve existing skippedDates when editing
+    if (existing && existing.skippedDates) payload.skippedDates = existing.skippedDates;
+    await set(ref(db, 'recurring/' + id), payload);
     closeModal();
   });
 }
@@ -863,6 +975,103 @@ function openBalanceModal() {
   setTimeout(() => document.getElementById('f-balance')?.focus(), 50);
 }
 
+function openInstanceDeleteModal(baseId, date) {
+  const r = state.recurring[baseId];
+  const name = r ? r.name : 'this entry';
+  const prettyDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  document.getElementById('modal-root').innerHTML = `
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <h2>Remove recurring entry</h2>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:1.25rem;line-height:1.6">
+        What would you like to do with <strong>${name}</strong>?
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem">
+        <button id="skip-once-btn" style="text-align:left;padding:12px 14px;border:1px solid var(--border-strong);border-radius:var(--radius);background:none;cursor:pointer;font-family:inherit;color:var(--text);transition:background .1s">
+          <div style="font-size:13px;font-weight:600;margin-bottom:2px">Skip ${prettyDate} only</div>
+          <div style="font-size:12px;color:var(--text-3)">Remove just this one occurrence — future ones continue as normal</div>
+        </button>
+        <button id="stop-future-btn" style="text-align:left;padding:12px 14px;border:1px solid var(--border-strong);border-radius:var(--radius);background:none;cursor:pointer;font-family:inherit;color:var(--text);transition:background .1s">
+          <div style="font-size:13px;font-weight:600;margin-bottom:2px">Stop after a date…</div>
+          <div style="font-size:12px;color:var(--text-3)">Set an end date so this stops recurring from a chosen point</div>
+        </button>
+        <button id="delete-all-btn" style="text-align:left;padding:12px 14px;border:1px solid var(--red-bg);border-radius:var(--radius);background:none;cursor:pointer;font-family:inherit;color:var(--red);transition:background .1s">
+          <div style="font-size:13px;font-weight:600;margin-bottom:2px">Delete all occurrences</div>
+          <div style="font-size:12px;color:var(--red);opacity:.7">Permanently remove this recurring entry entirely</div>
+        </button>
+      </div>
+      <div class="modal-actions" style="margin-top:0">
+        <button class="btn-cancel" id="modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>`;
+
+  // Hover effects
+  ['skip-once-btn','stop-future-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    btn.addEventListener('mouseover', () => btn.style.background = 'var(--surface-2)');
+    btn.addEventListener('mouseout',  () => btn.style.background = 'none');
+  });
+  const delAll = document.getElementById('delete-all-btn');
+  delAll.addEventListener('mouseover', () => delAll.style.background = 'var(--red-bg)');
+  delAll.addEventListener('mouseout',  () => delAll.style.background = 'none');
+
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-backdrop').addEventListener('click', ev => { if (ev.target.id==='modal-backdrop') closeModal(); });
+
+  document.getElementById('skip-once-btn').addEventListener('click', async () => {
+    const path = `recurring/${baseId}/skippedDates/${date}`;
+    await set(ref(db, path), true);
+    closeModal();
+  });
+
+  document.getElementById('stop-future-btn').addEventListener('click', () => {
+    closeModal();
+    openStopRecurModal(baseId, date);
+  });
+
+  document.getElementById('delete-all-btn').addEventListener('click', async () => {
+    await remove(ref(db, 'recurring/' + baseId));
+    closeModal();
+  });
+}
+
+function openStopRecurModal(baseId, fromDate) {
+  // Default end date = the day before the selected instance
+  const d = new Date(fromDate + 'T00:00:00');
+  d.setDate(d.getDate() - 1);
+  const defaultEnd = d.toISOString().slice(0, 10);
+  const r = state.recurring[baseId];
+  const name = r ? r.name : 'this entry';
+
+  document.getElementById('modal-root').innerHTML = `
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <h2>Stop recurring entry</h2>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;line-height:1.5">
+        Choose the last date <strong>${name}</strong> should appear. All occurrences after this date will be removed.
+      </p>
+      <div class="form-group">
+        <label>Last occurrence date</label>
+        <input id="f-end-date" type="date" value="${defaultEnd}" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="modal-cancel">Cancel</button>
+        <button class="btn-save" id="modal-save">Set end date</button>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-backdrop').addEventListener('click', ev => { if (ev.target.id==='modal-backdrop') closeModal(); });
+  document.getElementById('modal-save').addEventListener('click', async () => {
+    const endDate = document.getElementById('f-end-date').value;
+    if (!endDate) return;
+    await set(ref(db, `recurring/${baseId}/endDate`), endDate);
+    closeModal();
+  });
+}
+
 function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
 
 // ─── Event delegation ─────────────────────
@@ -898,6 +1107,10 @@ function handleClick(e) {
   // Edit recurring
   const editRecur = e.target.closest('[data-action="edit-recurring"]');
   if (editRecur) { openRecurModal(editRecur.dataset.id); return; }
+
+  // Delete/skip a single recurring instance
+  const delInstance = e.target.closest('[data-action="del-instance"]');
+  if (delInstance) { openInstanceDeleteModal(delInstance.dataset.baseId, delInstance.dataset.date); return; }
 
   // Delete entry
   const delEntry = e.target.closest('[data-action="del-entry"]');

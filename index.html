@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Family Budget" />
+  <meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
   <title>Family Budget</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -72,189 +78,268 @@
       --purple-bg:  #3b1f6e;
     }
 
-    /* Theme toggle button */
-    .theme-btn { width: 32px; height: 32px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: var(--radius); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; transition: background .1s; flex-shrink: 0; }
-    .theme-btn:hover { background: var(--surface-2); }
-
-    /* Account balance card */
-    .acct-balance-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-    .acct-balance-card .left .lbl { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 4px; }
-    .acct-balance-card .left .val { font-size: 26px; font-weight: 600; letter-spacing: -.5px; color: var(--text); }
-    .acct-balance-card .left .sub { font-size: 12px; color: var(--text-3); margin-top: 3px; }
-    .acct-balance-card .right { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
-    .set-balance-btn { background: none; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 6px 12px; font-size: 12px; font-family: inherit; cursor: pointer; color: var(--text-2); font-weight: 500; white-space: nowrap; transition: background .1s; }
-    .set-balance-btn:hover { background: var(--surface-2); }
-    .projected-chip { font-size: 11px; color: var(--text-3); text-align: right; }
-    .projected-chip .pos { font-weight: 600; color: var(--green); }
-    .projected-chip .neg { font-weight: 600; color: var(--red); }
-
-    /* Day balance banner */
-    .day-balance-banner { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); gap: 10px; flex-wrap: wrap; }
-    .day-balance-banner .dbb-label { font-size: 12px; color: var(--text-3); font-weight: 500; }
-    .day-balance-banner .dbb-value { font-size: 20px; font-weight: 600; letter-spacing: -.3px; }
-    .day-balance-banner .dbb-note  { font-size: 11px; color: var(--text-3); margin-top: 1px; }
-
-    /* Day total footer */
-    .day-total-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 16px; border-top: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; gap: 6px; }
-    .day-total-row .dt-label { font-size: 12px; color: var(--text-3); font-weight: 500; }
-    .day-total-row .dt-values { display: flex; gap: 12px; font-size: 12px; font-weight: 600; }
-    .day-total-row .dt-income  { color: var(--green); }
-    .day-total-row .dt-expense { color: var(--red); }
-    .day-total-row .dt-net     { color: var(--text-2); padding-left: 10px; border-left: 1px solid var(--border); }
-
     body {
       font-family: 'Inter', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
       font-size: 15px;
       line-height: 1.5;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
-    /* ── Layout ── */
-    .app-shell { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+    /* ── App shell: fixed full-height flex column ── */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      max-width: 720px;
+      margin: 0 auto;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /* ── Top chrome: shrinks to fit, never scrolls ── */
+    .app-chrome { flex-shrink: 0; padding: 8px 12px 0; }
+
+    /* ── Scrollable content area ── */
+    .app-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 12px 12px; -webkit-overflow-scrolling: touch; }
+    .app-content::-webkit-scrollbar { display: none; }
+    .app-content { scrollbar-width: none; }
 
     /* ── Header ── */
-    .app-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 12px; }
-    .app-header h1 { font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
-    .app-header p  { font-size: 13px; color: var(--text-3); margin-top: 2px; }
-    .sync-pill { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 5px 12px; font-size: 12px; color: var(--text-2); }
-    .sync-dot  { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+    .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 8px; }
+    .app-header h1 { font-size: 17px; font-weight: 600; letter-spacing: -.3px; }
+    .app-header p  { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+    .header-actions { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    .sync-pill { display: flex; align-items: center; gap: 5px; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 4px 8px; font-size: 11px; color: var(--text-2); white-space: nowrap; }
+    .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
     .sync-dot.offline { background: var(--text-3); }
+    @media (max-width: 380px) { .sync-pill span { display: none; } }
 
-    /* ── Month nav ── */
-    .month-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-    .month-bar h2 { font-size: 17px; font-weight: 600; }
-    .nav-btns { display: flex; gap: 6px; }
-    .nav-btn { width: 32px; height: 32px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: var(--radius); cursor: pointer; font-size: 16px; color: var(--text-2); display: flex; align-items: center; justify-content: center; transition: background .1s; }
-    .nav-btn:hover { background: var(--surface-2); }
+    /* ── Account balance card ── */
+    .acct-balance-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .acct-balance-card .left .lbl { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 1px; }
+    .acct-balance-card .left .val { font-size: 19px; font-weight: 600; letter-spacing: -.4px; line-height: 1.2; }
+    .acct-balance-card .left .sub { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+    .acct-balance-card .right { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; flex-shrink: 0; }
+    .set-balance-btn { background: none; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 5px 9px; font-size: 11px; font-family: inherit; cursor: pointer; color: var(--text-2); font-weight: 500; white-space: nowrap; min-height: 34px; }
+    .projected-chip { font-size: 10px; color: var(--text-3); text-align: right; }
+    .projected-chip .pos { font-weight: 600; color: var(--green); }
+    .projected-chip .neg { font-weight: 600; color: var(--red); }
 
     /* ── Summary cards ── */
-    .summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
-    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
-    .stat-card .label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 5px; }
-    .stat-card .value { font-size: 21px; font-weight: 600; letter-spacing: -.4px; }
+    .summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 6px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 9px; }
+    .stat-card .label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-bottom: 2px; }
+    .stat-card .value { font-size: 14px; font-weight: 600; letter-spacing: -.3px; }
     .stat-card.income .value { color: var(--green); }
     .stat-card.expense .value { color: var(--red); }
     .stat-card.balance .value { color: var(--blue); }
 
     /* ── Tabs ── */
-    .tab-bar { display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--radius); padding: 3px; margin-bottom: 1.25rem; }
-    .tab { flex: 1; padding: 7px 8px; background: none; border: none; border-radius: 6px; font-size: 13px; font-family: inherit; cursor: pointer; color: var(--text-2); transition: all .1s; font-weight: 500; }
+    .tab-bar { display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--radius); padding: 2px; margin-bottom: 4px; }
+    .tab { flex: 1; padding: 5px 4px; background: none; border: none; border-radius: 5px; font-size: 11px; font-family: inherit; cursor: pointer; color: var(--text-2); font-weight: 500; min-height: 34px; }
     .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-    .tab svg { vertical-align: -3px; margin-right: 4px; }
+    .tab svg { vertical-align: -3px; margin-right: 2px; }
+
+    /* ── Month nav ── */
+    .month-bar { display: flex; align-items: center; justify-content: space-between; padding: 2px 0 4px; }
+    .month-bar h2 { font-size: 14px; font-weight: 600; }
+    .nav-btns { display: flex; gap: 5px; }
+    .nav-btn { width: 34px; height: 34px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: var(--radius); cursor: pointer; font-size: 18px; color: var(--text-2); display: flex; align-items: center; justify-content: center; }
+
+    /* ── Zoom controls ── */
+    .zoom-bar { display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--radius); padding: 2px; margin-bottom: 6px; }
+    .zoom-btn { flex: 1; padding: 4px 2px; background: none; border: none; border-radius: 5px; font-size: 10px; font-family: inherit; cursor: pointer; color: var(--text-3); font-weight: 500; white-space: nowrap; min-height: 30px; }
+    .zoom-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 
     /* ── Calendar ── */
-    .calendar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.25rem; }
+    .calendar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 6px; }
     .cal-header { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--border); }
-    .cal-dname { padding: 8px 4px; text-align: center; font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+    .cal-dname { padding: 4px 2px; text-align: center; font-size: 9px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-    .cal-cell { min-height: 68px; padding: 5px 6px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; position: relative; }
+    .cal-cell { padding: 3px 3px 2px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); cursor: pointer; position: relative; min-height: 46px; }
     .cal-cell:nth-child(7n) { border-right: none; }
-    .cal-cell:hover { background: var(--surface-2); }
-    .cal-cell.faded .cal-num { opacity: .3; }
+    .cal-cell.faded .cal-num { opacity: .25; }
     .cal-cell.today { background: var(--blue-bg); }
-    .cal-cell.today .cal-num { color: var(--blue); font-weight: 600; }
+    .cal-cell.today .cal-num { color: var(--blue); font-weight: 700; }
     .cal-cell.selected { outline: 2px solid var(--blue); outline-offset: -2px; background: var(--blue-bg); }
-    .cal-num { font-size: 12px; color: var(--text-2); margin-bottom: 3px; font-weight: 500; }
-    .cal-pills { display: flex; flex-direction: column; gap: 2px; }
-    .cal-pill { font-size: 10px; border-radius: 3px; padding: 1px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+    .cal-num { font-size: 11px; color: var(--text-2); margin-bottom: 2px; font-weight: 500; }
+    .cal-pills { display: flex; flex-direction: column; gap: 1px; }
+    .cal-pill { font-size: 8px; border-radius: 2px; padding: 1px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
     .cal-pill.income  { background: var(--green-bg); color: var(--green); }
     .cal-pill.expense { background: var(--red-bg);   color: var(--red);   }
-    .cal-pill.more    { color: var(--text-3); font-size: 9px; }
+    .cal-pill.more    { color: var(--text-3); font-size: 8px; }
+    @media (max-width: 400px) {
+      .cal-pill { display: none; }
+      .cal-cell.has-income::before  { content:''; position:absolute; bottom:3px; left:25%; width:5px; height:5px; border-radius:50%; background:var(--green); }
+      .cal-cell.has-expense::after  { content:''; position:absolute; bottom:3px; right:25%; width:5px; height:5px; border-radius:50%; background:var(--red); }
+    }
 
     /* ── Section panel ── */
-    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 1rem; overflow: hidden; }
-    .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid var(--border); }
-    .panel-header h3 { font-size: 14px; font-weight: 600; }
-    .add-btn { display: flex; align-items: center; gap: 5px; background: none; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 6px 12px; font-size: 12px; font-family: inherit; cursor: pointer; color: var(--text-2); font-weight: 500; transition: background .1s; }
-    .add-btn:hover { background: var(--surface-2); }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; overflow: hidden; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .panel-header h3 { font-size: 12px; font-weight: 600; }
+    .add-btn { display: flex; align-items: center; gap: 4px; background: none; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 5px 10px; font-size: 11px; font-family: inherit; cursor: pointer; color: var(--text-2); font-weight: 500; min-height: 34px; }
 
     /* ── Entry rows ── */
-    .entry-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: default; transition: background .1s; }
-    .entry-row:hover { background: var(--surface-2); }
-    .entry-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
+    .entry-row { display: flex; align-items: center; gap: 7px; padding: 8px 10px; }
+    .entry-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; }
     .entry-icon.income  { background: var(--green-bg); }
     .entry-icon.expense { background: var(--red-bg); }
     .entry-info { flex: 1; min-width: 0; }
-    .entry-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .entry-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; }
-    .recur-tag { font-size: 10px; background: var(--purple-bg); color: var(--purple); border-radius: 3px; padding: 1px 5px; margin-left: 5px; vertical-align: middle; font-weight: 500; }
-    .entry-amount { font-size: 14px; font-weight: 600; flex-shrink: 0; }
+    .entry-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .entry-meta { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+    .recur-tag { font-size: 9px; background: var(--purple-bg); color: var(--purple); border-radius: 3px; padding: 1px 4px; margin-left: 3px; vertical-align: middle; font-weight: 500; }
+    .entry-amount { font-size: 12px; font-weight: 600; flex-shrink: 0; }
     .entry-amount.income  { color: var(--green); }
     .entry-amount.expense { color: var(--red); }
-    .del-btn { background: none; border: none; cursor: pointer; color: var(--text-3); padding: 4px; border-radius: var(--radius); opacity: 0; font-size: 14px; transition: all .1s; line-height: 1; }
-    .entry-row:hover .del-btn { opacity: 1; }
-    .del-btn:hover { color: var(--red); background: var(--red-bg); }
-    .date-divider { padding: 7px 16px 3px; font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; border-top: 1px solid var(--border); margin-top: 2px; }
+
+    /* Action buttons — always visible on touch, hover on desktop */
+    .recur-actions { display: flex; gap: 1px; flex-shrink: 0; }
+    .del-btn, .edit-btn { background: none; border: none; cursor: pointer; padding: 4px; border-radius: var(--radius); font-size: 12px; line-height: 1; min-width: 30px; min-height: 30px; display: flex; align-items: center; justify-content: center; color: var(--text-3); }
+    @media (hover: hover) {
+      .del-btn, .edit-btn { opacity: 0; transition: opacity .1s; }
+      .entry-row:hover .del-btn, .entry-row:hover .edit-btn,
+      .recur-row:hover .del-btn, .recur-row:hover .edit-btn { opacity: 1; }
+    }
+    .del-btn:hover  { color: var(--red);  background: var(--red-bg); }
+    .edit-btn:hover { color: var(--blue); background: var(--blue-bg); }
+
+    .date-divider { padding: 5px 10px 2px; font-size: 9px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; border-top: 1px solid var(--border); margin-top: 2px; }
     .date-divider:first-child { border-top: none; margin-top: 0; }
-    .empty-state { padding: 32px 16px; text-align: center; color: var(--text-3); font-size: 13px; }
-    .empty-state .icon { font-size: 28px; margin-bottom: 8px; }
+    .empty-state { padding: 20px 12px; text-align: center; color: var(--text-3); font-size: 12px; }
+    .empty-state .icon { font-size: 22px; margin-bottom: 5px; }
 
     /* ── Recurring rows ── */
-    .recur-row { display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-bottom: 1px solid var(--border); transition: background .1s; }
+    .recur-row { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-bottom: 1px solid var(--border); }
     .recur-row:last-child { border-bottom: none; }
-    .recur-row:hover { background: var(--surface-2); }
-    .recur-row:hover .del-btn,
-    .recur-row:hover .edit-btn { opacity: 1; }
-    .recur-freq { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-    .edit-btn { background: none; border: none; cursor: pointer; color: var(--text-3); padding: 4px; border-radius: var(--radius); opacity: 0; font-size: 14px; transition: all .1s; line-height: 1; }
-    .edit-btn:hover { color: var(--blue); background: var(--blue-bg); }
-    .recur-actions { display: flex; gap: 2px; flex-shrink: 0; }
+    .recur-freq { font-size: 10px; color: var(--text-3); margin-top: 1px; }
 
-    /* ── Modal ── */
-    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 1rem; }
-    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; width: 360px; max-width: 100%; }
-    .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 1.25rem; }
-    .form-group { margin-bottom: 13px; }
-    .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 5px; }
+    /* ── Day balance banner ── */
+    .day-balance-banner { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-bottom: 1px solid var(--border); background: var(--surface-2); gap: 8px; }
+    .day-balance-banner .dbb-label { font-size: 10px; color: var(--text-3); font-weight: 500; }
+    .day-balance-banner .dbb-value { font-size: 16px; font-weight: 600; letter-spacing: -.3px; }
+    .day-balance-banner .dbb-note  { font-size: 9px; color: var(--text-3); margin-top: 1px; }
+
+    /* ── Day total footer ── */
+    .day-total-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-top: 1px solid var(--border); background: var(--surface-2); gap: 6px; }
+    .day-total-row .dt-label { font-size: 10px; color: var(--text-3); font-weight: 500; }
+    .day-total-row .dt-values { display: flex; gap: 7px; font-size: 10px; font-weight: 600; }
+    .day-total-row .dt-income  { color: var(--green); }
+    .day-total-row .dt-expense { color: var(--red); }
+    .day-total-row .dt-net     { color: var(--text-2); padding-left: 7px; border-left: 1px solid var(--border); }
+
+    /* ── Modal — sheet on mobile, centered on desktop ── */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; z-index: 200; }
+    @media (min-width: 560px) { .modal-backdrop { align-items: center; padding: 1rem; } }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 1.1rem 1rem 1.5rem; width: 100%; max-width: 480px; max-height: 90dvh; overflow-y: auto; }
+    @media (min-width: 560px) { .modal { border-radius: var(--radius-lg); } }
+    .modal h2 { font-size: 15px; font-weight: 600; margin-bottom: .9rem; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 500; color: var(--text-2); margin-bottom: 4px; }
     .form-group input,
-    .form-group select { width: 100%; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s; }
-    .form-group input:focus,
-    .form-group select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-bg); }
+    .form-group select { width: 100%; padding: 10px 11px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 16px; font-family: inherit; outline: none; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-bg); }
     .type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .type-btn { padding: 9px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: none; cursor: pointer; font-size: 13px; font-family: inherit; color: var(--text-2); font-weight: 500; transition: all .1s; }
+    .type-btn { padding: 10px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: none; cursor: pointer; font-size: 13px; font-family: inherit; color: var(--text-2); font-weight: 500; min-height: 44px; }
     .type-btn.active.expense { background: var(--red-bg); border-color: var(--red); color: var(--red); }
     .type-btn.active.income  { background: var(--green-bg); border-color: var(--green); color: var(--green); }
-    .modal-actions { display: flex; gap: 8px; margin-top: 1.25rem; }
-    .modal-actions button { flex: 1; padding: 10px; border-radius: var(--radius); font-size: 13px; font-family: inherit; cursor: pointer; font-weight: 500; transition: all .1s; }
+    .modal-actions { display: flex; gap: 8px; margin-top: .9rem; }
+    .modal-actions button { flex: 1; padding: 12px; border-radius: var(--radius); font-size: 14px; font-family: inherit; cursor: pointer; font-weight: 500; min-height: 44px; }
     .btn-cancel { background: none; border: 1px solid var(--border-strong); color: var(--text-2); }
-    .btn-cancel:hover { background: var(--surface-2); }
     .btn-save { background: var(--blue); border: none; color: #fff; }
-    .btn-save:hover { opacity: .9; }
     .btn-save:disabled { opacity: .5; cursor: not-allowed; }
-    .error-msg { font-size: 12px; color: var(--red); margin-top: 8px; }
+    .error-msg { font-size: 11px; color: var(--red); margin-top: 6px; }
 
     /* ── Setup screen ── */
-    .setup-screen { max-width: 420px; margin: 4rem auto; padding: 0 1rem; }
-    .setup-screen h1 { font-size: 24px; font-weight: 600; margin-bottom: .5rem; }
-    .setup-screen p  { font-size: 14px; color: var(--text-2); margin-bottom: 1.5rem; line-height: 1.6; }
-    .setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; }
-    .setup-card h2 { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
-    .setup-card input { width: 100%; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; margin-bottom: 8px; outline: none; }
+    .setup-screen { max-width: 420px; margin: 0 auto; padding: 1.5rem 1rem; height: 100dvh; overflow-y: auto; }
+    .setup-screen h1 { font-size: 21px; font-weight: 600; margin-bottom: .4rem; }
+    .setup-screen p  { font-size: 13px; color: var(--text-2); margin-bottom: 1.25rem; line-height: 1.6; }
+    .setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem; margin-bottom: .75rem; }
+    .setup-card h2 { font-size: 14px; font-weight: 600; margin-bottom: .75rem; }
+    .setup-card input { width: 100%; padding: 10px 11px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 16px; font-family: inherit; margin-bottom: 8px; outline: none; }
     .setup-card input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-bg); }
-    .setup-card button { width: 100%; padding: 11px; background: var(--blue); border: none; border-radius: var(--radius); color: #fff; font-size: 14px; font-family: inherit; font-weight: 600; cursor: pointer; margin-top: 4px; }
-    .setup-card button:hover { opacity: .9; }
-    .step-label { display: inline-block; background: var(--blue-bg); color: var(--blue); font-size: 11px; font-weight: 600; border-radius: 99px; padding: 2px 9px; margin-bottom: 10px; }
+    .setup-card button { width: 100%; padding: 12px; background: var(--blue); border: none; border-radius: var(--radius); color: #fff; font-size: 14px; font-family: inherit; font-weight: 600; cursor: pointer; margin-top: 4px; min-height: 44px; }
+    .step-label { display: inline-block; background: var(--blue-bg); color: var(--blue); font-size: 11px; font-weight: 600; border-radius: 99px; padding: 2px 9px; margin-bottom: 8px; }
     .config-link { font-size: 12px; color: var(--text-3); text-align: center; margin-top: .75rem; }
     .config-link a { color: var(--blue); text-decoration: none; }
-    .config-link a:hover { text-decoration: underline; }
     .note-box { background: var(--blue-bg); border: 1px solid var(--blue); border-radius: var(--radius); padding: 10px 13px; font-size: 12px; color: var(--blue); margin-bottom: 1rem; line-height: 1.5; }
 
     /* ── Loading ── */
-    .spinner { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 12px; color: var(--text-3); font-size: 14px; }
+    .spinner { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100dvh; gap: 12px; color: var(--text-3); font-size: 14px; }
     .spin { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Responsive ── */
-    @media (max-width: 480px) {
-      .summary-row { grid-template-columns: 1fr 1fr; }
-      .stat-card.balance { grid-column: 1 / -1; }
-      .stat-card .value { font-size: 18px; }
-      .cal-cell { min-height: 54px; }
-      .cal-pill { display: none; }
-      .cal-cell.has-entries::after { content: '•'; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--text-3); }
-    }
+    /* ── Year view ── */
+    .year-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    @media (max-width: 400px) { .year-grid { grid-template-columns: repeat(2, 1fr); } }
+    .year-cell { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 9px; cursor: pointer; min-height: 44px; }
+    .year-cell.today-month { outline: 2px solid var(--blue); outline-offset: -2px; background: var(--blue-bg); }
+    .year-cell .yc-name { font-size: 10px; font-weight: 600; color: var(--text-2); margin-bottom: 3px; }
+    .year-cell .yc-net  { font-size: 14px; font-weight: 600; letter-spacing: -.2px; }
+    .year-cell .yc-sub  { font-size: 9px; color: var(--text-3); margin-top: 1px; }
+    .year-cell .yc-bar  { height: 3px; border-radius: 2px; margin-top: 5px; background: var(--border); overflow: hidden; }
+    .year-cell .yc-bar-fill { height: 100%; border-radius: 2px; }
+
+    /* ── Quarter view ── */
+    .quarter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    @media (max-width: 480px) { .quarter-grid { grid-template-columns: 1fr; } }
+    .quarter-month { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; }
+    .quarter-month.today-month { outline: 2px solid var(--blue); outline-offset: -2px; }
+    .qm-header { padding: 7px 9px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: baseline; }
+    .qm-header .qm-name { font-size: 11px; font-weight: 600; }
+    .qm-header .qm-net  { font-size: 11px; font-weight: 600; }
+    .qm-entries { padding: 3px 0; }
+    .qm-entry { display: flex; justify-content: space-between; padding: 2px 9px; font-size: 10px; }
+    .qm-entry .qme-name { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+    .qm-entry .qme-amt  { font-weight: 500; flex-shrink: 0; }
+    .qm-more { padding: 2px 9px 5px; font-size: 9px; color: var(--text-3); }
+
+    /* ── Week view ── */
+    .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 6px; }
+    .week-cell { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 3px; cursor: pointer; min-height: 72px; }
+    .week-cell.today { background: var(--blue-bg); border-color: var(--blue); }
+    .week-cell.selected { outline: 2px solid var(--blue); outline-offset: -2px; }
+    .wc-dow  { font-size: 8px; font-weight: 600; color: var(--text-3); text-transform: uppercase; text-align: center; margin-bottom: 1px; }
+    .wc-num  { font-size: 13px; font-weight: 600; color: var(--text); text-align: center; margin-bottom: 3px; }
+    .week-cell.today .wc-num { color: var(--blue); }
+    .wc-bal  { font-size: 8px; font-weight: 600; text-align: center; margin-bottom: 2px; }
+    .wc-pills { display: flex; flex-direction: column; gap: 1px; }
+    .wc-pill { font-size: 7px; border-radius: 2px; padding: 1px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+    .wc-pill.income  { background: var(--green-bg); color: var(--green); }
+    .wc-pill.expense { background: var(--red-bg); color: var(--red); }
+    @media (max-width: 400px) { .wc-pill { display: none; } .wc-bal { display: none; } }
+
+    /* ── Day view ── */
+    .day-view { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 6px; }
+    .day-view-header { padding: 8px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .day-view-header .dv-date { font-size: 14px; font-weight: 600; }
+    .day-view-header .dv-sub  { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+    .day-view-bal { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+    .day-view-bal .dvb-label { font-size: 10px; color: var(--text-3); font-weight: 500; }
+    .day-view-bal .dvb-value { font-size: 17px; font-weight: 600; letter-spacing: -.3px; }
+    .day-timeline { }
+    .day-tl-entry { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .day-tl-entry:last-child { border-bottom: none; }
+    .day-tl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .day-tl-dot.income  { background: var(--green); }
+    .day-tl-dot.expense { background: var(--red); }
+    .day-tl-info { flex: 1; min-width: 0; }
+    .day-tl-name { font-size: 12px; font-weight: 500; }
+    .day-tl-cat  { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+    .day-tl-amt  { font-size: 12px; font-weight: 600; flex-shrink: 0; }
+    .day-tl-amt.income  { color: var(--green); }
+    .day-tl-amt.expense { color: var(--red); }
+    .day-tl-run  { font-size: 9px; color: var(--text-3); text-align: right; margin-top: 1px; }
+    .day-view-empty { padding: 24px 12px; text-align: center; color: var(--text-3); font-size: 12px; }
+
+    /* ── Theme toggle ── */
+    .theme-btn { width: 34px; height: 34px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: var(--radius); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
   </style>
 </head>
 <body>
@@ -305,12 +390,15 @@ let db = null;
 let state = {
   entries: {},
   recurring: {},
-  accountBalance: null,      // actual balance set by user, stored in Firebase
-  monthlyBalances: {},       // { 'YYYY-MM': number } — carry-forward snapshots per month
+  accountBalance: null,       // { value, updatedAt } — current balance snapshot
+  monthlyBalances: {},        // { 'YYYY-MM': number } — carry-forward snapshots per month
+  balanceSnapshots: {},       // { 'YYYY-MM-DD': { value, updatedAt } } — intraday snapshots
   currentYear: new Date().getFullYear(),
   currentMonth: new Date().getMonth(),
+  currentWeekStart: null,
   selectedDate: null,
   view: 'calendar',
+  zoom: 'month',
   synced: false,
 };
 
@@ -324,6 +412,18 @@ function fmt(n) {
 function pad(n) { return String(n).padStart(2, '0'); }
 function dateStr(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
 function todayStr() { const t = new Date(); return dateStr(t.getFullYear(), t.getMonth(), t.getDate()); }
+
+// accountBalance may be a legacy plain number or { value, updatedAt }
+function acctValue() {
+  const a = state.accountBalance;
+  if (a === null || a === undefined) return null;
+  return typeof a === 'object' ? a.value : a;
+}
+function acctUpdatedAt() {
+  const a = state.accountBalance;
+  if (!a || typeof a !== 'object') return null;
+  return a.updatedAt || null;
+}
 
 // ─── Recurring expansion ─────────────────
 function expandRecurring(year, month) {
@@ -340,7 +440,8 @@ function expandRecurring(year, month) {
       if (endDate && d > endDate) break;
       const ds = d.toISOString().slice(0, 10);
       if (d >= monthStart && !skipped[ds]) {
-        expanded.push({ ...r, id: r.id + '_' + ds, date: ds, isInstance: true });
+        const overrides = r.overrides && r.overrides[ds] ? r.overrides[ds] : {};
+        expanded.push({ ...r, ...overrides, id: r.id + '_' + ds, date: ds, isInstance: true, isOverridden: !!Object.keys(overrides).length });
       }
       const freq = r.frequency;
       if      (freq === 'weekly')      d.setDate(d.getDate() + 7);
@@ -404,25 +505,45 @@ function calcProjected(year, month) {
 function calcDailyBalance(targetDate) {
   const [ty, tm] = targetDate.split('-').map(Number);
   const year = ty, month = tm - 1;
-  const startBal = getMonthStartBalance(year, month);
+  const today = todayStr();
 
+  // Check if there's a same-day balance snapshot for this date
+  const snap = state.balanceSnapshots[targetDate];
+  if (snap && targetDate === today) {
+    // Use snapshot value + only entries created AFTER the snapshot timestamp
+    const snapTs = snap.updatedAt;
+    let net = 0;
+    monthEntries(year, month).forEach(e => {
+      if (e.date === targetDate) {
+        // Only add entries logged after the snapshot was taken
+        const entryTs = e.createdAt || 0;
+        if (entryTs > snapTs) {
+          net += e.type === 'income' ? +e.amount : -e.amount;
+        }
+      } else if (e.date < targetDate) {
+        // Past-day entries before today are already in the snapshot value
+        // (snapshot represents balance at point of update, so skip past days too)
+      }
+    });
+    return { value: snap.value + net, hasAcct: true, fromSnapshot: true, snapTime: new Date(snapTs).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) };
+  }
+
+  // Fall back to month-start anchor + cumulative net
+  const startBal = getMonthStartBalance(year, month);
   if (startBal !== null) {
-    const today = todayStr();
-    // Sum all entries from start of month up to targetDate
     let net = 0;
     monthEntries(year, month).forEach(e => {
       if (e.date <= targetDate) {
         net += e.type === 'income' ? +e.amount : -e.amount;
       }
     });
-    return { value: startBal + net, hasAcct: true };
+    return { value: startBal + net, hasAcct: true, fromSnapshot: false };
   } else {
-    // No balance anchor — show cumulative net from start of that month
     let net = 0;
     monthEntries(year, month).forEach(e => {
       if (e.date <= targetDate) net += e.type === 'income' ? +e.amount : -e.amount;
     });
-    return { value: net, hasAcct: false };
+    return { value: net, hasAcct: false, fromSnapshot: false };
   }
 }
 
@@ -440,11 +561,15 @@ function initFirebase(config) {
     render();
   });
   onValue(ref(db, 'accountBalance'), snap => {
-    state.accountBalance = snap.val();
+    state.accountBalance = snap.val(); // { value, updatedAt } or legacy number
     render();
   });
   onValue(ref(db, 'monthlyBalances'), snap => {
     state.monthlyBalances = snap.val() || {};
+    render();
+  });
+  onValue(ref(db, 'balanceSnapshots'), snap => {
+    state.balanceSnapshots = snap.val() || {};
     render();
   });
 }
@@ -483,7 +608,7 @@ function getMonthStartBalance(year, month) {
   // No saved anchor — use accountBalance for current month only
   const now = new Date();
   if (year === now.getFullYear() && month === now.getMonth()) {
-    return state.accountBalance; // may be null
+    return acctValue(); // may be null
   }
   return null;
 }
@@ -559,41 +684,42 @@ function attachSetup() {
 }
 
 function renderApp() {
-  const { currentYear: y, currentMonth: m, view } = state;
+  const { currentYear: y, currentMonth: m, view, zoom } = state;
   const { income, expenses, balance } = calcSummary(y, m);
   const isDark = document.documentElement.classList.contains('dark') ||
     (!document.documentElement.classList.contains('light') && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   // Account balance card
-  const acctVal = state.accountBalance;
+  const acctVal = acctValue();
+  const acctUpdated = acctUpdatedAt();
   const now = new Date();
   const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
   const startBal = getMonthStartBalance(y, m);
   const projected = calcProjected(y, m);
   const daysLeft = new Date(y, m + 1, 0).getDate() - (isCurrentMonth ? now.getDate() : 0);
 
-  // Carry-forward notice for non-current months
   const prevM = m === 0 ? 11 : m - 1;
   const prevY = m === 0 ? y - 1 : y;
-  const prevKey = monthKey(prevY, prevM);
-  const hasPrevBalance = state.monthlyBalances[prevKey] !== undefined;
   const carryLabel = startBal !== null
     ? (isCurrentMonth
         ? `Carried in from ${MONTHS[prevM]}: ${startBal >= 0 ? '+' : ''}${fmt(startBal)}`
         : `Starting balance: ${startBal >= 0 ? '+' : ''}${fmt(startBal)}`)
     : null;
 
+  const acctSubLabel = isCurrentMonth
+    ? (acctVal !== null
+        ? (acctUpdated
+            ? `Updated today at ${new Date(acctUpdated).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` + (carryLabel ? ` · ${carryLabel}` : '')
+            : (carryLabel || 'Last updated by either partner'))
+        : 'Tap "Update" to set your current balance')
+    : (carryLabel || 'No starting balance on record');
+
   const acctCard = `
   <div class="acct-balance-card">
     <div class="left">
       <div class="lbl">${isCurrentMonth ? 'Account balance' : `${MONTHS[m]} ${y} overview`}</div>
       <div class="val">${isCurrentMonth ? (acctVal !== null ? fmt(acctVal) : '—') : (startBal !== null ? fmt(startBal) : '—')}</div>
-      <div class="sub">${isCurrentMonth
-        ? (acctVal !== null
-            ? (carryLabel || 'Last updated by either partner')
-            : 'Tap "Update" to set your current balance')
-        : (carryLabel || 'No starting balance on record')
-      }</div>
+      <div class="sub">${acctSubLabel}</div>
     </div>
     <div class="right">
       ${isCurrentMonth ? `<button class="set-balance-btn" data-action="set-balance">✎ Update balance</button>` : ''}
@@ -601,55 +727,379 @@ function renderApp() {
     </div>
   </div>`;
 
-  return `
-  <div class="app-shell">
-    <div class="app-header">
-      <div>
-        <h1>Family budget</h1>
-        <p>${MONTHS[m]} ${y}</p>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="sync-pill">
-          <div class="sync-dot ${state.synced ? '' : 'offline'}"></div>
-          ${state.synced ? 'Live sync on' : 'Connecting…'}
-        </div>
-        <button class="theme-btn" id="theme-btn" title="Toggle dark/light mode">${isDark ? '☀️' : '🌙'}</button>
-        <button class="nav-btn" id="disconnect-btn" title="Disconnect / change database" style="font-size:12px;width:auto;padding:0 10px;color:var(--text-3)">⚙</button>
-      </div>
-    </div>
+  // Nav label and prev/next targets depend on zoom
+  const navLabel = zoomNavLabel(y, m);
 
-    ${acctCard}
-
-    <div class="month-bar">
-      <h2>${MONTHS[m]} ${y}</h2>
-      <div class="nav-btns">
-        <button class="nav-btn" id="prev-btn">&#8249;</button>
-        <button class="nav-btn" id="next-btn">&#8250;</button>
-      </div>
-    </div>
-
+  // Summary cards: suppress for year view (each month cell is its own summary)
+  const showSummary = zoom !== 'year';
+  const summaryCards = showSummary ? `
     <div class="summary-row">
       <div class="stat-card income"><div class="label">Income</div><div class="value">${fmt(income)}</div></div>
       <div class="stat-card expense"><div class="label">Expenses</div><div class="value">${fmt(expenses)}</div></div>
       <div class="stat-card balance"><div class="label">Net this month</div><div class="value" style="color:${balance >= 0 ? 'var(--green)' : 'var(--red)'}">${balance < 0 ? '-' : ''}${fmt(balance)}</div></div>
+    </div>` : '';
+
+  // Zoom bar (only in calendar view)
+  const zoomBar = view === 'calendar' ? `
+    <div class="zoom-bar">
+      <button class="zoom-btn ${zoom==='year'    ?'active':''}" data-zoom="year">Year</button>
+      <button class="zoom-btn ${zoom==='quarter' ?'active':''}" data-zoom="quarter">Quarter</button>
+      <button class="zoom-btn ${zoom==='month'   ?'active':''}" data-zoom="month">Month</button>
+      <button class="zoom-btn ${zoom==='week'    ?'active':''}" data-zoom="week">Week</button>
+      <button class="zoom-btn ${zoom==='day'     ?'active':''}" data-zoom="day">Day</button>
+    </div>` : '';
+
+  let calContent = '';
+  if (view === 'calendar') {
+    if      (zoom === 'year')    calContent = renderYearView(y);
+    else if (zoom === 'quarter') calContent = renderQuarterView(y, m);
+    else if (zoom === 'month')   calContent = renderCalendar(y, m);
+    else if (zoom === 'week')    calContent = renderWeekView();
+    else if (zoom === 'day')     calContent = renderDayView(state.selectedDate || todayStr());
+  }
+
+  return `
+  <div class="app-shell">
+    <div class="app-chrome">
+      <div class="app-header">
+        <div>
+          <h1>Family budget</h1>
+          <p>${MONTHS[m]} ${y}</p>
+        </div>
+        <div class="header-actions">
+          <div class="sync-pill">
+            <div class="sync-dot ${state.synced ? '' : 'offline'}"></div>
+            <span>${state.synced ? 'Live' : '…'}</span>
+          </div>
+          <button class="theme-btn" id="theme-btn" title="Toggle dark/light mode">${isDark ? '☀️' : '🌙'}</button>
+          <button class="nav-btn" id="disconnect-btn" title="Disconnect / change database" style="font-size:11px;width:auto;padding:0 8px;color:var(--text-3);height:34px;">⚙</button>
+        </div>
+      </div>
+
+      ${acctCard}
+
+      ${summaryCards}
+
+      <div class="tab-bar">
+        <button class="tab ${view==='calendar'?'active':''}" data-view="calendar">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>Calendar
+        </button>
+        <button class="tab ${view==='list'?'active':''}" data-view="list">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 4h12M2 8h12M2 12h7"/></svg>Entries
+        </button>
+        <button class="tab ${view==='recurring'?'active':''}" data-view="recurring">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8a6 6 0 1 0 6-6"/><path d="M8 1l-2 2 2 2"/></svg>Recurring
+        </button>
+      </div>
+
+      ${zoomBar}
+
+      <div class="month-bar">
+        <h2>${navLabel}</h2>
+        <div class="nav-btns">
+          <button class="nav-btn" id="prev-btn">&#8249;</button>
+          <button class="nav-btn" id="next-btn">&#8250;</button>
+        </div>
+      </div>
     </div>
 
-    <div class="tab-bar">
-      <button class="tab ${view==='calendar'?'active':''}" data-view="calendar">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>Calendar
-      </button>
-      <button class="tab ${view==='list'?'active':''}" data-view="list">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 4h12M2 8h12M2 12h7"/></svg>All entries
-      </button>
-      <button class="tab ${view==='recurring'?'active':''}" data-view="recurring">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8a6 6 0 1 0 6-6"/><path d="M8 1l-2 2 2 2"/></svg>Recurring
-      </button>
+    <div class="app-content">
+      ${ view==='calendar' ? calContent : view==='list' ? renderList(y, m) : renderRecurring() }
     </div>
-
-    ${ view==='calendar' ? renderCalendar(y, m) : view==='list' ? renderList(y, m) : renderRecurring() }
   </div>
 
   <div id="modal-root"></div>`;
+}
+
+// ─── Zoom helpers ─────────────────────────
+
+function zoomNavLabel(y, m) {
+  const { zoom } = state;
+  if (zoom === 'year') return `${y}`;
+  if (zoom === 'quarter') {
+    const q = Math.floor(m / 3) + 1;
+    return `Q${q} ${y}`;
+  }
+  if (zoom === 'week') {
+    const ws = getWeekStart();
+    const we = new Date(ws); we.setDate(we.getDate() + 6);
+    const fmt1 = ws.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const fmt2 = we.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${fmt1} – ${fmt2}`;
+  }
+  if (zoom === 'day') {
+    const d = state.selectedDate || todayStr();
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+  return `${MONTHS[m]} ${y}`;
+}
+
+function getWeekStart() {
+  if (state.currentWeekStart) return new Date(state.currentWeekStart + 'T00:00:00');
+  // Default: Sunday of the week containing selectedDate or today
+  const anchor = state.selectedDate ? new Date(state.selectedDate + 'T00:00:00') : new Date();
+  const d = new Date(anchor);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+
+function navigateZoom(dir) {
+  const { zoom } = state;
+  if (zoom === 'year') {
+    state.currentYear += dir;
+  } else if (zoom === 'quarter') {
+    state.currentMonth += dir * 3;
+    while (state.currentMonth < 0)  { state.currentMonth += 12; state.currentYear--; }
+    while (state.currentMonth > 11) { state.currentMonth -= 12; state.currentYear++; }
+  } else if (zoom === 'month') {
+    state.currentMonth += dir;
+    if (state.currentMonth < 0)  { state.currentMonth = 11; state.currentYear--; }
+    if (state.currentMonth > 11) { state.currentMonth = 0;  state.currentYear++; }
+  } else if (zoom === 'week') {
+    const ws = getWeekStart();
+    ws.setDate(ws.getDate() + dir * 7);
+    state.currentWeekStart = ws.toISOString().slice(0, 10);
+    state.currentYear  = ws.getFullYear();
+    state.currentMonth = ws.getMonth();
+  } else if (zoom === 'day') {
+    const d = new Date((state.selectedDate || todayStr()) + 'T00:00:00');
+    d.setDate(d.getDate() + dir);
+    state.selectedDate = d.toISOString().slice(0, 10);
+    state.currentYear  = d.getFullYear();
+    state.currentMonth = d.getMonth();
+  }
+}
+
+// ─── Year view ────────────────────────────
+function renderYearView(y) {
+  const today = new Date();
+  let allNet = 0;
+  const months = MONTHS.map((name, mi) => {
+    const { income, expenses, balance } = calcSummary(y, mi);
+    allNet += balance;
+    return { name, mi, income, expenses, balance };
+  });
+  const maxAbs = Math.max(...months.map(m => Math.abs(m.balance)), 1);
+
+  let cells = months.map(({ name, mi, income, expenses, balance }) => {
+    const isNow = y === today.getFullYear() && mi === today.getMonth();
+    const barPct = Math.round((Math.abs(balance) / maxAbs) * 100);
+    const barColor = balance >= 0 ? 'var(--green)' : 'var(--red)';
+    const hasData = income > 0 || expenses > 0;
+    return `<div class="year-cell ${isNow ? 'today-month' : ''}" data-zoom-nav="month" data-zm-month="${mi}" data-zm-year="${y}">
+      <div class="yc-name">${name}</div>
+      ${hasData
+        ? `<div class="yc-net" style="color:${balance>=0?'var(--green)':'var(--red)'}">${balance<0?'-':''}${fmt(balance)}</div>
+           <div class="yc-sub">↑${fmt(income)} ↓${fmt(expenses)}</div>
+           <div class="yc-bar"><div class="yc-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div>`
+        : `<div class="yc-sub" style="margin-top:4px">No entries</div>`
+      }
+    </div>`;
+  }).join('');
+
+  const yearNet = allNet;
+  return `
+  <div style="margin-bottom:.75rem;display:flex;justify-content:space-between;align-items:baseline">
+    <span style="font-size:13px;color:var(--text-3)">Click a month to zoom in</span>
+    <span style="font-size:14px;font-weight:600;color:${yearNet>=0?'var(--green)':'var(--red)'}">Year net: ${yearNet<0?'-':''}${fmt(yearNet)}</span>
+  </div>
+  <div class="year-grid">${cells}</div>`;
+}
+
+// ─── Quarter view ─────────────────────────
+function renderQuarterView(y, m) {
+  const q = Math.floor(m / 3);
+  const months = [q*3, q*3+1, q*3+2];
+  const today = new Date();
+
+  let cols = months.map(mi => {
+    const { income, expenses, balance } = calcSummary(y, mi);
+    const isNow = y === today.getFullYear() && mi === today.getMonth();
+    const ents = monthEntries(y, mi).sort((a,b) => a.date > b.date ? 1 : -1).slice(0, 5);
+    const entryRows = ents.map(e =>
+      `<div class="qm-entry">
+        <span class="qme-name">${e.name}</span>
+        <span class="qme-amt" style="color:${e.type==='income'?'var(--green)':'var(--red)'}">${e.type==='income'?'+':'-'}${fmt(+e.amount)}</span>
+      </div>`
+    ).join('');
+    const total = monthEntries(y, mi).length;
+    const more  = total > 5 ? `<div class="qm-more">+${total-5} more</div>` : '';
+    return `<div class="quarter-month ${isNow?'today-month':''}" data-zoom-nav="month" data-zm-month="${mi}" data-zm-year="${y}">
+      <div class="qm-header">
+        <span class="qm-name">${MONTHS[mi]}</span>
+        <span class="qm-net" style="color:${balance>=0?'var(--green)':'var(--red)'}">${balance<0?'-':''}${fmt(balance)}</span>
+      </div>
+      <div class="qm-entries">${entryRows || '<div class="qm-more">No entries</div>'}${more}</div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div style="margin-bottom:.75rem;font-size:13px;color:var(--text-3)">Click a month to zoom in</div>
+  <div class="quarter-grid">${cols}</div>`;
+}
+
+// ─── Week view ────────────────────────────
+function renderWeekView() {
+  const ws = getWeekStart();
+  const today = todayStr();
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(ws); d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  // Collect all entries for the week across potentially 2 months
+  const months = [...new Set(days.map(d => monthKey(d.getFullYear(), d.getMonth())))];
+  const allEnts = [];
+  months.forEach(k => {
+    const [ky, km] = k.split('-').map(Number);
+    allEnts.push(...monthEntries(ky, km - 1));
+  });
+  const byDay = {};
+  allEnts.forEach(e => { (byDay[e.date] = byDay[e.date] || []).push(e); });
+
+  const cells = days.map(d => {
+    const ds = d.toISOString().slice(0, 10);
+    const isToday = ds === today;
+    const isSel   = ds === state.selectedDate;
+    const ents    = byDay[ds] || [];
+    const { value: bal, hasAcct } = calcDailyBalance(ds);
+    const balColor = bal >= 0 ? 'var(--green)' : 'var(--red)';
+    const pills = ents.slice(0, 3).map(e => {
+      const label = e.name.length > 8 ? e.name.slice(0,8)+'…' : e.name;
+      return `<div class="wc-pill ${e.type}">${e.type==='income'?'+':'-'} ${label}</div>`;
+    }).join('');
+    const more = ents.length > 3 ? `<div class="wc-pill" style="color:var(--text-3);font-size:9px">+${ents.length-3}</div>` : '';
+    const balStr = hasAcct ? `<div class="wc-bal" style="color:${balColor}">${bal<0?'-':''}${fmt(bal)}</div>` : '';
+
+    return `<div class="week-cell ${isToday?'today':''} ${isSel?'selected':''}" data-date="${ds}" data-zoom-day="${ds}">
+      <div class="wc-dow">${['Su','Mo','Tu','We','Th','Fr','Sa'][d.getDay()]}</div>
+      <div class="wc-num">${d.getDate()}</div>
+      ${balStr}
+      <div class="wc-pills">${pills}${more}</div>
+    </div>`;
+  }).join('');
+
+  // Detail panel for selected day (reuses existing)
+  let detail = '';
+  if (state.selectedDate) {
+    const selD = new Date(state.selectedDate + 'T00:00:00');
+    const inWeek = days.some(d => d.toISOString().slice(0,10) === state.selectedDate);
+    if (inWeek) {
+      detail = renderDayDetail(state.selectedDate);
+    }
+  }
+
+  return `<div class="week-grid">${cells}</div>${detail}`;
+}
+
+// ─── Day view ─────────────────────────────
+function renderDayView(ds) {
+  const d = new Date(ds + 'T00:00:00');
+  const label = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const ents  = dayEntries(ds);
+  const today = todayStr();
+  const { value: endBal, hasAcct, fromSnapshot, snapTime } = calcDailyBalance(ds);
+  const { value: startBal } = calcDailyBalance(
+    (() => { const prev = new Date(d); prev.setDate(prev.getDate()-1); return prev.toISOString().slice(0,10); })()
+  );
+
+  let running = hasAcct ? startBal : 0;
+  const timeline = ents.length === 0
+    ? `<div class="day-view-empty">📋 No entries. Add income or an expense.</div>`
+    : ents.map(e => {
+        const delta = e.type === 'income' ? +e.amount : -e.amount;
+        running += delta;
+        const recurTag = (e.isRecurring || e.isInstance)
+          ? `<span class="recur-tag">recurring</span>` : '';
+        const baseId = e.isInstance ? e.id.replace(/_\d{4}-\d{2}-\d{2}$/, '') : null;
+        const delBtn = e.isInstance
+          ? `<button class="del-btn" data-action="del-instance" data-base-id="${baseId}" data-date="${ds}" style="opacity:.6">✕</button>`
+          : `<button class="del-btn" data-action="del-entry" data-id="${e.id}" style="opacity:.6">✕</button>`;
+        return `<div class="day-tl-entry">
+          <div class="day-tl-dot ${e.type}"></div>
+          <div class="day-tl-info">
+            <div class="day-tl-name">${e.name}${recurTag}</div>
+            <div class="day-tl-cat">${e.category||'Uncategorized'}${e.addedBy?' · '+e.addedBy:''}</div>
+          </div>
+          <div>
+            <div class="day-tl-amt ${e.type}">${e.type==='income'?'+':'-'}${fmt(+e.amount)}</div>
+            ${hasAcct ? `<div class="day-tl-run">${running<0?'-':''}${fmt(running)}</div>` : ''}
+          </div>
+          ${delBtn}
+        </div>`;
+      }).join('');
+
+  const isPast   = ds <  today;
+  const isToday  = ds === today;
+  const balLabel = fromSnapshot
+    ? `Balance (updated ${snapTime})`
+    : isToday ? 'Balance today' : isPast ? 'Balance end of day' : 'Projected balance';
+
+  return `
+  <div class="day-view">
+    <div class="day-view-header">
+      <div>
+        <div class="dv-date">${label}</div>
+        <div class="dv-sub">Click ‹ › to move between days</div>
+      </div>
+      <button class="add-btn" data-action="add-entry" data-date="${ds}">+ Add entry</button>
+    </div>
+    ${hasAcct ? `<div class="day-view-bal">
+      <span class="dvb-label">${balLabel}</span>
+      <span class="dvb-value" style="color:${endBal>=0?'var(--green)':'var(--red)'}">${endBal<0?'-':''}${fmt(endBal)}</span>
+    </div>` : ''}
+    <div class="day-timeline">${timeline}</div>
+  </div>`;
+}
+
+// ─── Day detail panel (shared by month + week click) ──
+function renderDayDetail(ds) {
+  const ents = dayEntries(ds);
+  const label = new Date(ds + 'T00:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  let rows = ents.length === 0
+    ? `<div class="empty-state"><div class="icon">📋</div>No entries. Add income or an expense.</div>`
+    : ents.map(entryRow).join('');
+
+  let dayInc = 0, dayExp = 0;
+  ents.forEach(e => { if (e.type==='income') dayInc += +e.amount; else dayExp += +e.amount; });
+  const dayNet = dayInc - dayExp;
+  const totalFooter = ents.length > 0 ? `
+  <div class="day-total-row">
+    <span class="dt-label">Day total</span>
+    <span class="dt-values">
+      <span class="dt-income">+${fmt(dayInc)}</span>
+      <span class="dt-expense">-${fmt(dayExp)}</span>
+      <span class="dt-net" style="color:${dayNet>=0?'var(--green)':'var(--red)'}">${dayNet<0?'-':''}${fmt(dayNet)}</span>
+    </span>
+  </div>` : '';
+
+  const { value: dayBal, hasAcct, fromSnapshot, snapTime } = calcDailyBalance(ds);
+  const today = todayStr();
+  const isPast = ds < today, isToday = ds === today;
+  const noteText = hasAcct
+    ? (fromSnapshot
+        ? `Balance as of ${snapTime} + entries since then`
+        : isPast ? 'Estimated balance at end of this day' : isToday ? "Estimated balance including today's entries" : "Projected balance after this day's entries")
+    : 'Month-to-date net (set account balance for a real figure)';
+  const balBanner = `
+  <div class="day-balance-banner">
+    <div>
+      <div class="dbb-label">${isToday ? 'Balance today' : isPast ? 'Balance that day' : 'Projected balance'}</div>
+      <div class="dbb-note">${noteText}</div>
+    </div>
+    <div class="dbb-value" style="color:${dayBal>=0?'var(--green)':'var(--red)'}">${dayBal<0?'-':''}${fmt(dayBal)}</div>
+  </div>`;
+
+  return `
+  <div class="panel">
+    <div class="panel-header">
+      <h3>${label}</h3>
+      <button class="add-btn" data-action="add-entry" data-date="${ds}">+ Add entry</button>
+    </div>
+    ${balBanner}
+    ${rows}
+    ${totalFooter}
+  </div>`;
 }
 
 function renderCalendar(y, m) {
@@ -675,6 +1125,9 @@ function renderCalendar(y, m) {
     const ents    = byDay[ds] || [];
     const hasEnts = ents.length > 0;
 
+    const hasIncome  = ents.some(e => e.type === 'income');
+    const hasExpense = ents.some(e => e.type === 'expense');
+
     let pills = '';
     ents.slice(0, 2).forEach(e => {
       const label = e.name.length > 9 ? e.name.slice(0,9)+'…' : e.name;
@@ -682,7 +1135,7 @@ function renderCalendar(y, m) {
     });
     if (ents.length > 2) pills += `<div class="cal-pill more">+${ents.length-2}</div>`;
 
-    grid += `<div class="cal-cell ${!c.cur?'faded':''} ${isToday?'today':''} ${isSel?'selected':''} ${hasEnts&&!pills?'has-entries':''}"
+    grid += `<div class="cal-cell ${!c.cur?'faded':''} ${isToday?'today':''} ${isSel?'selected':''} ${hasIncome?'has-income':''} ${hasExpense?'has-expense':''}"
       ${c.cur ? `data-date="${ds}"` : ''}
       role="${c.cur?'button':''}" tabindex="${c.cur?'0':''}">
       <div class="cal-num">${c.n}</div>
@@ -692,56 +1145,7 @@ function renderCalendar(y, m) {
 
   let detail = '';
   if (state.selectedDate) {
-    const ents = dayEntries(state.selectedDate);
-    const label = new Date(state.selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
-    let rows = ents.length === 0
-      ? `<div class="empty-state"><div class="icon">📋</div>No entries. Add income or an expense.</div>`
-      : ents.map(entryRow).join('');
-
-    // Day totals
-    let dayInc = 0, dayExp = 0;
-    ents.forEach(e => { if (e.type==='income') dayInc += +e.amount; else dayExp += +e.amount; });
-    const dayNet = dayInc - dayExp;
-    const totalFooter = ents.length > 0 ? `
-    <div class="day-total-row">
-      <span class="dt-label">Day total</span>
-      <span class="dt-values">
-        <span class="dt-income">+${fmt(dayInc)}</span>
-        <span class="dt-expense">-${fmt(dayExp)}</span>
-        <span class="dt-net" style="color:${dayNet>=0?'var(--green)':'var(--red)'}">${dayNet<0?'-':''}${fmt(dayNet)}</span>
-      </span>
-    </div>` : '';
-
-    // Daily running balance banner
-    const { value: dayBal, hasAcct } = calcDailyBalance(state.selectedDate);
-    const today = todayStr();
-    const isPast   = state.selectedDate <  today;
-    const isFuture = state.selectedDate >  today;
-    const isToday  = state.selectedDate === today;
-    const noteText = hasAcct
-      ? (isPast   ? 'Estimated balance at end of this day'
-        : isToday ? 'Estimated balance including today\'s entries'
-        :           'Projected balance after this day\'s entries')
-      : 'Month-to-date net (set account balance for a real figure)';
-    const balBanner = `
-    <div class="day-balance-banner">
-      <div>
-        <div class="dbb-label">${isToday ? 'Balance today' : isPast ? 'Balance that day' : 'Projected balance'}</div>
-        <div class="dbb-note">${noteText}</div>
-      </div>
-      <div class="dbb-value" style="color:${dayBal >= 0 ? 'var(--green)' : 'var(--red)'}">${dayBal < 0 ? '-' : ''}${fmt(dayBal)}</div>
-    </div>`;
-
-    detail = `
-    <div class="panel">
-      <div class="panel-header">
-        <h3>${label}</h3>
-        <button class="add-btn" data-action="add-entry" data-date="${state.selectedDate}">+ Add entry</button>
-      </div>
-      ${balBanner}
-      ${rows}
-      ${totalFooter}
-    </div>`;
+    detail = renderDayDetail(state.selectedDate);
   }
 
   return `
@@ -826,23 +1230,25 @@ function renderRecurring() {
 
 function entryRow(e) {
   const recurTag = (e.isRecurring || e.isInstance) ? `<span class="recur-tag">recurring</span>` : '';
+  const editedTag = e.isOverridden ? `<span class="recur-tag" style="background:var(--blue-bg);color:var(--blue)">edited</span>` : '';
   const by = e.addedBy ? ` · ${e.addedBy}` : '';
-  let del;
+  let actions;
   if (e.isInstance) {
-    // Parse the base recurring ID (everything before the last _YYYY-MM-DD)
     const baseId = e.id.replace(/_\d{4}-\d{2}-\d{2}$/, '');
-    del = `<button class="del-btn" data-action="del-instance" data-base-id="${baseId}" data-date="${e.date}" title="Remove this occurrence">✕</button>`;
+    actions = `
+      <button class="edit-btn" data-action="edit-instance" data-base-id="${baseId}" data-date="${e.date}" title="Edit this occurrence" style="opacity:0">✎</button>
+      <button class="del-btn"  data-action="del-instance"  data-base-id="${baseId}" data-date="${e.date}" title="Remove this occurrence">✕</button>`;
   } else {
-    del = `<button class="del-btn" data-action="del-entry" data-id="${e.id}">✕</button>`;
+    actions = `<button class="del-btn" data-action="del-entry" data-id="${e.id}">✕</button>`;
   }
   return `<div class="entry-row">
     <div class="entry-icon ${e.type}">${e.type==='income'?'↓':'↑'}</div>
     <div class="entry-info">
-      <div class="entry-name">${e.name}${recurTag}</div>
+      <div class="entry-name">${e.name}${recurTag}${editedTag}</div>
       <div class="entry-meta">${e.category||'Uncategorized'}${by}</div>
     </div>
     <div class="entry-amount ${e.type}">${e.type==='income'?'+':'-'}${fmt(+e.amount)}</div>
-    ${del}
+    <div class="recur-actions">${actions}</div>
   </div>`;
 }
 
@@ -971,20 +1377,21 @@ function openRecurModal(existingId) {
     const id = existing ? existing.id : ('r' + Date.now());
     const payload = { id, type, name, amount, startDate, frequency: freq, category: cat, isRecurring: true };
     if (endDate) payload.endDate = endDate;
-    // Preserve existing skippedDates when editing
+    // Preserve existing skippedDates and overrides when editing
     if (existing && existing.skippedDates) payload.skippedDates = existing.skippedDates;
+    if (existing && existing.overrides)    payload.overrides    = existing.overrides;
     await set(ref(db, 'recurring/' + id), payload);
     closeModal();
   });
 }
 
 function openBalanceModal() {
-  const current = state.accountBalance;
+  const current = acctValue();
   document.getElementById('modal-root').innerHTML = `
   <div class="modal-backdrop" id="modal-backdrop">
     <div class="modal">
       <h2>Update account balance</h2>
-      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;line-height:1.5">Enter the actual balance from your bank account right now. Both you and your partner will see this, and the app will calculate your projected end-of-month balance from it.</p>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;line-height:1.5">Enter the actual balance from your bank right now. The app will only count entries added <em>after</em> this update toward today's balance — so it stays accurate even if you update mid-day.</p>
       <div class="form-group">
         <label>Current account balance ($)</label>
         <input id="f-balance" type="number" step="0.01" placeholder="e.g. 3450.00" value="${current !== null ? current : ''}" />
@@ -1004,14 +1411,21 @@ function openBalanceModal() {
   document.getElementById('modal-save').addEventListener('click', async () => {
     const val = parseFloat(document.getElementById('f-balance').value);
     if (isNaN(val)) return;
-    await set(ref(db, 'accountBalance'), val);
-    // Anchor this as the starting balance for the current month so carry-forward chains from here
+    const updatedAt = Date.now();
+    const by = document.getElementById('f-balance-by').value.trim();
+    // Store as object with timestamp so calcDailyBalance knows when it was set
+    const payload = { value: val, updatedAt };
+    if (by) payload.updatedBy = by;
+    await set(ref(db, 'accountBalance'), payload);
+    // Anchor as monthly start balance (numeric)
     const now = new Date();
     const key = monthKey(now.getFullYear(), now.getMonth());
     await set(ref(db, 'monthlyBalances/' + key), val);
+    // Write intraday snapshot for today
+    const today = todayStr();
+    await set(ref(db, 'balanceSnapshots/' + today), { value: val, updatedAt });
     closeModal();
   });
-  // Focus the input
   setTimeout(() => document.getElementById('f-balance')?.focus(), 50);
 }
 
@@ -1112,6 +1526,68 @@ function openStopRecurModal(baseId, fromDate) {
   });
 }
 
+function openInstanceEditModal(baseId, date) {
+  const r = state.recurring[baseId];
+  if (!r) return;
+  const existing = (r.overrides && r.overrides[date]) || {};
+  // Current effective values (override takes priority over rule)
+  const curName     = existing.name     || r.name;
+  const curAmount   = existing.amount   !== undefined ? existing.amount : r.amount;
+  const curCategory = existing.category || r.category;
+  const curAddedBy  = existing.addedBy  || '';
+  const prettyDate  = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+
+  const catOptions = ['Housing','Food & dining','Transportation','Utilities','Healthcare','Entertainment','Shopping','Savings','Income','Other'];
+  const catOpts = catOptions.map(c => `<option ${c === curCategory ? 'selected' : ''}>${c}</option>`).join('');
+
+  document.getElementById('modal-root').innerHTML = `
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <h2>Edit this occurrence</h2>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;line-height:1.5">
+        Editing <strong>${prettyDate}</strong> only. The recurring rule stays unchanged.
+      </p>
+      <div class="form-group"><label>Name</label><input id="f-name" value="${curName}" /></div>
+      <div class="form-group"><label>Amount ($)</label><input id="f-amount" type="number" min="0" step="0.01" value="${curAmount}" /></div>
+      <div class="form-group"><label>Category</label><select id="f-cat">${catOpts}</select></div>
+      <div class="form-group"><label>Added by</label><input id="f-by" placeholder="Your name (optional)" value="${curAddedBy}" /></div>
+      ${existing.amount !== undefined ? `
+      <div style="margin-bottom:12px">
+        <button id="clear-override-btn" style="background:none;border:1px solid var(--border-strong);border-radius:var(--radius);padding:6px 12px;font-size:12px;font-family:inherit;cursor:pointer;color:var(--text-3)">
+          ↩ Reset to recurring rule defaults
+        </button>
+      </div>` : ''}
+      <div class="modal-actions">
+        <button class="btn-cancel" id="modal-cancel">Cancel</button>
+        <button class="btn-save" id="modal-save">Save for this date</button>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-backdrop').addEventListener('click', ev => { if (ev.target.id === 'modal-backdrop') closeModal(); });
+
+  const clearBtn = document.getElementById('clear-override-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', async () => {
+      await remove(ref(db, `recurring/${baseId}/overrides/${date}`));
+      closeModal();
+    });
+  }
+
+  document.getElementById('modal-save').addEventListener('click', async () => {
+    const name     = document.getElementById('f-name').value.trim();
+    const amount   = parseFloat(document.getElementById('f-amount').value);
+    const category = document.getElementById('f-cat').value;
+    const addedBy  = document.getElementById('f-by').value.trim();
+    if (!name || isNaN(amount)) return;
+    const override = { name, amount, category };
+    if (addedBy) override.addedBy = addedBy;
+    await set(ref(db, `recurring/${baseId}/overrides/${date}`), override);
+    closeModal();
+  });
+}
+
 function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
 
 // ─── Event delegation ─────────────────────
@@ -1120,6 +1596,32 @@ function attachApp() {
 }
 
 async function handleClick(e) {
+  // Zoom buttons
+  const zoomBtn = e.target.closest('[data-zoom]');
+  if (zoomBtn) {
+    state.zoom = zoomBtn.dataset.zoom;
+    if (state.zoom === 'day' && !state.selectedDate) state.selectedDate = todayStr();
+    if (state.zoom === 'week') state.currentWeekStart = null; // reset to current week
+    render(); return;
+  }
+
+  // Year/quarter cell → drill into month
+  const zoomNav = e.target.closest('[data-zoom-nav]');
+  if (zoomNav) {
+    state.currentMonth = parseInt(zoomNav.dataset.zmMonth);
+    state.currentYear  = parseInt(zoomNav.dataset.zmYear);
+    state.zoom = zoomNav.dataset.zoomNav; // 'month'
+    state.selectedDate = null;
+    render(); return;
+  }
+
+  // Week cell → select day (and optionally drill to day view on double-tap pattern: just select for now)
+  const weekDay = e.target.closest('[data-zoom-day]');
+  if (weekDay) {
+    state.selectedDate = weekDay.dataset.zoomDay;
+    render(); return;
+  }
+
   // Theme toggle
   if (e.target.closest('#theme-btn')) { toggleTheme(); render(); return; }
 
@@ -1148,6 +1650,10 @@ async function handleClick(e) {
   const editRecur = e.target.closest('[data-action="edit-recurring"]');
   if (editRecur) { openRecurModal(editRecur.dataset.id); return; }
 
+  // Edit a single recurring instance
+  const editInstance = e.target.closest('[data-action="edit-instance"]');
+  if (editInstance) { openInstanceEditModal(editInstance.dataset.baseId, editInstance.dataset.date); return; }
+
   // Delete/skip a single recurring instance
   const delInstance = e.target.closest('[data-action="del-instance"]');
   if (delInstance) { openInstanceDeleteModal(delInstance.dataset.baseId, delInstance.dataset.date); return; }
@@ -1173,15 +1679,13 @@ async function handleClick(e) {
 
   // Month nav
   if (e.target.closest('#prev-btn')) {
-    await saveCarryForward(state.currentYear, state.currentMonth);
-    state.currentMonth--;
-    if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
+    if (state.zoom === 'month') await saveCarryForward(state.currentYear, state.currentMonth);
+    navigateZoom(-1);
     state.selectedDate = null; render(); return;
   }
   if (e.target.closest('#next-btn')) {
-    await saveCarryForward(state.currentYear, state.currentMonth);
-    state.currentMonth++;
-    if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
+    if (state.zoom === 'month') await saveCarryForward(state.currentYear, state.currentMonth);
+    navigateZoom(+1);
     state.selectedDate = null; render(); return;
   }
 }

@@ -435,24 +435,52 @@ function expandRecurring(year, month) {
     const monthStart = new Date(year, month, 1);
     const endDate    = r.endDate ? new Date(r.endDate + 'T00:00:00') : null;
     const skipped    = r.skippedDates || {};
+    // Collect all overrides so we can also include rescheduled instances that
+    // land in this month even if their original date is in a different month
+    const overridesMap = r.overrides || {};
+
+    // Walk the schedule and collect instances
+    const safety_limit = new Date(year + 2, month, 1); // don't walk past 2 years ahead
+    let d2 = new Date(start);
     let safety = 0;
-    while (d <= monthEnd && safety++ < 500) {
-      if (endDate && d > endDate) break;
-      const ds = d.toISOString().slice(0, 10);
-      if (d >= monthStart && !skipped[ds]) {
-        const overrides = r.overrides && r.overrides[ds] ? r.overrides[ds] : {};
-        expanded.push({ ...r, ...overrides, id: r.id + '_' + ds, date: ds, isInstance: true, isOverridden: !!Object.keys(overrides).length });
+    while (d2 <= safety_limit && safety++ < 1000) {
+      if (endDate && d2 > endDate) break;
+      const ds = d2.toISOString().slice(0, 10); // original scheduled date key
+      const overrides = overridesMap[ds] || {};
+      const effectiveDate = overrides.date || ds; // may be rescheduled
+      const effD = new Date(effectiveDate + 'T00:00:00');
+
+      if (!skipped[ds]) {
+        // Include if the *effective* date falls in the requested month
+        if (effD >= monthStart && effD <= monthEnd) {
+          expanded.push({
+            ...r, ...overrides,
+            id: r.id + '_' + ds,           // keyed by original so overrides still match
+            scheduledDate: ds,              // original scheduled date (for override lookups)
+            date: effectiveDate,            // displayed / used date
+            isInstance: true,
+            isOverridden: Object.keys(overrides).length > 0
+          });
+        }
       }
+
       const freq = r.frequency;
-      if      (freq === 'weekly')      d.setDate(d.getDate() + 7);
-      else if (freq === 'biweekly')    d.setDate(d.getDate() + 14);
-      else if (freq === 'triweekly')   d.setDate(d.getDate() + 21);
-      else if (freq === 'monthly')     d.setMonth(d.getMonth() + 1);
-      else if (freq === 'bimonthly')   d.setMonth(d.getMonth() + 2);
-      else if (freq === 'quarterly')   d.setMonth(d.getMonth() + 3);
-      else if (freq === 'semiannual')  d.setMonth(d.getMonth() + 6);
-      else if (freq === 'annual')      d.setFullYear(d.getFullYear() + 1);
+      if      (freq === 'weekly')      d2.setDate(d2.getDate() + 7);
+      else if (freq === 'biweekly')    d2.setDate(d2.getDate() + 14);
+      else if (freq === 'triweekly')   d2.setDate(d2.getDate() + 21);
+      else if (freq === 'monthly')     d2.setMonth(d2.getMonth() + 1);
+      else if (freq === 'bimonthly')   d2.setMonth(d2.getMonth() + 2);
+      else if (freq === 'quarterly')   d2.setMonth(d2.getMonth() + 3);
+      else if (freq === 'semiannual')  d2.setMonth(d2.getMonth() + 6);
+      else if (freq === 'annual')      d2.setFullYear(d2.getFullYear() + 1);
       else break;
+
+      // Early exit if we're past the month and no more rescheduled instances are possible
+      if (d2 > monthEnd && Object.keys(overridesMap).every(k => {
+        const ov = overridesMap[k];
+        const ovDate = ov.date || k;
+        return new Date(ovDate + 'T00:00:00') <= monthEnd;
+      })) break;
     }
   });
   return expanded;
@@ -1015,8 +1043,9 @@ function renderDayView(ds) {
         const recurTag = (e.isRecurring || e.isInstance)
           ? `<span class="recur-tag">recurring</span>` : '';
         const baseId = e.isInstance ? e.id.replace(/_\d{4}-\d{2}-\d{2}$/, '') : null;
+        const schedDate = e.scheduledDate || e.date;
         const delBtn = e.isInstance
-          ? `<button class="del-btn" data-action="del-instance" data-base-id="${baseId}" data-date="${ds}" style="opacity:.6">✕</button>`
+          ? `<button class="del-btn" data-action="del-instance" data-base-id="${baseId}" data-date="${schedDate}" style="opacity:.6">✕</button>`
           : `<button class="del-btn" data-action="del-entry" data-id="${e.id}" style="opacity:.6">✕</button>`;
         return `<div class="day-tl-entry">
           <div class="day-tl-dot ${e.type}"></div>
@@ -1238,9 +1267,10 @@ function entryRow(e) {
   let actions;
   if (e.isInstance) {
     const baseId = e.id.replace(/_\d{4}-\d{2}-\d{2}$/, '');
+    const schedDate = e.scheduledDate || e.date; // fallback for legacy instances
     actions = `
-      <button class="edit-btn" data-action="edit-instance" data-base-id="${baseId}" data-date="${e.date}" title="Edit this occurrence">✎</button>
-      <button class="del-btn"  data-action="del-instance"  data-base-id="${baseId}" data-date="${e.date}" title="Remove this occurrence">✕</button>`;
+      <button class="edit-btn" data-action="edit-instance" data-base-id="${baseId}" data-date="${schedDate}" title="Edit this occurrence">✎</button>
+      <button class="del-btn"  data-action="del-instance"  data-base-id="${baseId}" data-date="${schedDate}" title="Remove this occurrence">✕</button>`;
   } else {
     actions = `
       <button class="edit-btn" data-action="edit-entry" data-id="${e.id}" title="Edit entry">✎</button>
@@ -1584,16 +1614,17 @@ function openStopRecurModal(baseId, fromDate) {
   });
 }
 
-function openInstanceEditModal(baseId, date) {
+function openInstanceEditModal(baseId, scheduledDate) {
   const r = state.recurring[baseId];
   if (!r) return;
-  const existing = (r.overrides && r.overrides[date]) || {};
+  const existing = (r.overrides && r.overrides[scheduledDate]) || {};
   // Current effective values (override takes priority over rule)
   const curName     = existing.name     || r.name;
   const curAmount   = existing.amount   !== undefined ? existing.amount : r.amount;
   const curCategory = existing.category || r.category;
   const curAddedBy  = existing.addedBy  || '';
-  const prettyDate  = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  const curDate     = existing.date     || scheduledDate; // may already be rescheduled
+  const prettyDate  = new Date(scheduledDate + 'T00:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
 
   const catOptions = ['Housing','Food & dining','Transportation','Utilities','Healthcare','Entertainment','Shopping','Savings','Income','Other'];
   const catOpts = catOptions.map(c => `<option ${c === curCategory ? 'selected' : ''}>${c}</option>`).join('');
@@ -1602,22 +1633,23 @@ function openInstanceEditModal(baseId, date) {
   <div class="modal-backdrop" id="modal-backdrop">
     <div class="modal">
       <h2>Edit this occurrence</h2>
-      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;line-height:1.5">
-        Editing <strong>${prettyDate}</strong> only. The recurring rule stays unchanged.
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.5">
+        Editing the <strong>${prettyDate}</strong> occurrence only. The recurring rule stays unchanged.
       </p>
+      <div class="form-group"><label>Date</label><input id="f-date" type="date" value="${curDate}" /></div>
       <div class="form-group"><label>Name</label><input id="f-name" value="${curName}" /></div>
       <div class="form-group"><label>Amount ($)</label><input id="f-amount" type="number" min="0" step="0.01" value="${curAmount}" /></div>
       <div class="form-group"><label>Category</label><select id="f-cat">${catOpts}</select></div>
       <div class="form-group"><label>Added by</label><input id="f-by" placeholder="Your name (optional)" value="${curAddedBy}" /></div>
-      ${existing.amount !== undefined ? `
+      ${Object.keys(existing).length > 0 ? `
       <div style="margin-bottom:12px">
-        <button id="clear-override-btn" style="background:none;border:1px solid var(--border-strong);border-radius:var(--radius);padding:6px 12px;font-size:12px;font-family:inherit;cursor:pointer;color:var(--text-3)">
+        <button id="clear-override-btn" style="background:none;border:1px solid var(--border-strong);border-radius:var(--radius);padding:6px 12px;font-size:12px;font-family:inherit;cursor:pointer;color:var(--text-3);min-height:36px">
           ↩ Reset to recurring rule defaults
         </button>
       </div>` : ''}
       <div class="modal-actions">
         <button class="btn-cancel" id="modal-cancel">Cancel</button>
-        <button class="btn-save" id="modal-save">Save for this date</button>
+        <button class="btn-save" id="modal-save">Save for this occurrence</button>
       </div>
     </div>
   </div>`;
@@ -1628,7 +1660,7 @@ function openInstanceEditModal(baseId, date) {
   const clearBtn = document.getElementById('clear-override-btn');
   if (clearBtn) {
     clearBtn.addEventListener('click', async () => {
-      await remove(ref(db, `recurring/${baseId}/overrides/${date}`));
+      await remove(ref(db, `recurring/${baseId}/overrides/${scheduledDate}`));
       closeModal();
     });
   }
@@ -1636,12 +1668,16 @@ function openInstanceEditModal(baseId, date) {
   document.getElementById('modal-save').addEventListener('click', async () => {
     const name     = document.getElementById('f-name').value.trim();
     const amount   = parseFloat(document.getElementById('f-amount').value);
+    const newDate  = document.getElementById('f-date').value;
     const category = document.getElementById('f-cat').value;
     const addedBy  = document.getElementById('f-by').value.trim();
-    if (!name || isNaN(amount)) return;
+    if (!name || isNaN(amount) || !newDate) return;
     const override = { name, amount, category };
     if (addedBy) override.addedBy = addedBy;
-    await set(ref(db, `recurring/${baseId}/overrides/${date}`), override);
+    // Only store date override if it actually differs from scheduled date
+    if (newDate !== scheduledDate) override.date = newDate;
+    // Save override keyed by the original scheduled date
+    await set(ref(db, `recurring/${baseId}/overrides/${scheduledDate}`), override);
     closeModal();
   });
 }

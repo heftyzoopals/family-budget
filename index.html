@@ -693,10 +693,13 @@ function renderApp() {
   const acctVal = acctValue();
   const acctUpdated = acctUpdatedAt();
   const now = new Date();
+  const todayDateStr = todayStr();
+  // Live running balance = today's fully calculated balance including all entries
+  const { value: liveRunning, hasAcct: hasLiveBal } = calcDailyBalance(todayDateStr);
+  const liveDisplay = hasLiveBal ? liveRunning : acctVal;
   const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
   const startBal = getMonthStartBalance(y, m);
   const projected = calcProjected(y, m);
-  const daysLeft = new Date(y, m + 1, 0).getDate() - (isCurrentMonth ? now.getDate() : 0);
 
   const prevM = m === 0 ? 11 : m - 1;
   const prevY = m === 0 ? y - 1 : y;
@@ -707,23 +710,23 @@ function renderApp() {
     : null;
 
   const acctSubLabel = isCurrentMonth
-    ? (acctVal !== null
+    ? (liveDisplay !== null
         ? (acctUpdated
-            ? `Updated today at ${new Date(acctUpdated).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` + (carryLabel ? ` · ${carryLabel}` : '')
-            : (carryLabel || 'Last updated by either partner'))
+            ? `Last set ${new Date(acctUpdated).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` + (carryLabel ? ` · ${carryLabel}` : '')
+            : (carryLabel || 'Running balance'))
         : 'Tap "Update" to set your current balance')
     : (carryLabel || 'No starting balance on record');
 
   const acctCard = `
   <div class="acct-balance-card">
     <div class="left">
-      <div class="lbl">${isCurrentMonth ? 'Account balance' : `${MONTHS[m]} ${y} overview`}</div>
-      <div class="val">${isCurrentMonth ? (acctVal !== null ? fmt(acctVal) : '—') : (startBal !== null ? fmt(startBal) : '—')}</div>
+      <div class="lbl">${isCurrentMonth ? 'Balance now' : `${MONTHS[m]} ${y} overview`}</div>
+      <div class="val" style="color:${liveDisplay!==null?(liveDisplay>=0?'var(--text)':'var(--red)'):'var(--text-3)'}">${isCurrentMonth ? (liveDisplay !== null ? (liveDisplay < 0 ? '-' : '') + fmt(liveDisplay) : '—') : (startBal !== null ? fmt(startBal) : '—')}</div>
       <div class="sub">${acctSubLabel}</div>
     </div>
     <div class="right">
-      ${isCurrentMonth ? `<button class="set-balance-btn" data-action="set-balance">✎ Update balance</button>` : ''}
-      ${projected !== null ? `<div class="projected-chip">${isCurrentMonth ? `End of month (${daysLeft}d left)` : 'End of month'}: <span class="${projected >= 0 ? 'pos' : 'neg'}">${projected < 0 ? '-' : ''}${fmt(projected)}</span></div>` : ''}
+      ${isCurrentMonth ? `<button class="set-balance-btn" data-action="set-balance">✎ Update</button>` : ''}
+      ${projected !== null ? `<div class="projected-chip">End of month: <span class="${projected >= 0 ? 'pos' : 'neg'}">${projected < 0 ? '-' : ''}${fmt(projected)}</span></div>` : ''}
     </div>
   </div>`;
 
@@ -1236,10 +1239,12 @@ function entryRow(e) {
   if (e.isInstance) {
     const baseId = e.id.replace(/_\d{4}-\d{2}-\d{2}$/, '');
     actions = `
-      <button class="edit-btn" data-action="edit-instance" data-base-id="${baseId}" data-date="${e.date}" title="Edit this occurrence" style="opacity:0">✎</button>
+      <button class="edit-btn" data-action="edit-instance" data-base-id="${baseId}" data-date="${e.date}" title="Edit this occurrence">✎</button>
       <button class="del-btn"  data-action="del-instance"  data-base-id="${baseId}" data-date="${e.date}" title="Remove this occurrence">✕</button>`;
   } else {
-    actions = `<button class="del-btn" data-action="del-entry" data-id="${e.id}">✕</button>`;
+    actions = `
+      <button class="edit-btn" data-action="edit-entry" data-id="${e.id}" title="Edit entry">✎</button>
+      <button class="del-btn"  data-action="del-entry"  data-id="${e.id}" title="Delete entry">✕</button>`;
   }
   return `<div class="entry-row">
     <div class="entry-icon ${e.type}">${e.type==='income'?'↓':'↑'}</div>
@@ -1253,33 +1258,35 @@ function entryRow(e) {
 }
 
 // ─── Modals ───────────────────────────────
-function openEntryModal(defaultDate) {
-  let type = 'expense';
+function openEntryModal(defaultDate, existingEntry) {
+  // existingEntry = full entry object when editing, null when adding
+  const existing = existingEntry || null;
+  let type = existing ? existing.type : 'expense';
+
+  const catOptions = ['Housing','Food & dining','Transportation','Utilities','Healthcare','Entertainment','Shopping','Savings','Income','Other'];
+  const catOpts = catOptions.map(c =>
+    `<option ${existing && existing.category === c ? 'selected' : ''}>${c}</option>`
+  ).join('');
+
   document.getElementById('modal-root').innerHTML = `
   <div class="modal-backdrop" id="modal-backdrop">
     <div class="modal">
-      <h2>Add entry</h2>
+      <h2>${existing ? 'Edit entry' : 'Add entry'}</h2>
       <div class="form-group">
         <label>Type</label>
         <div class="type-toggle">
-          <button class="type-btn expense active" id="type-expense-btn">↑ Expense</button>
-          <button class="type-btn income" id="type-income-btn">↓ Income</button>
+          <button class="type-btn expense ${type==='expense'?'active':''}" id="type-expense-btn">↑ Expense</button>
+          <button class="type-btn income  ${type==='income' ?'active':''}" id="type-income-btn">↓ Income</button>
         </div>
       </div>
-      <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. Groceries" /></div>
-      <div class="form-group"><label>Amount ($)</label><input id="f-amount" type="number" min="0" step="0.01" placeholder="0.00" /></div>
-      <div class="form-group"><label>Date</label><input id="f-date" type="date" value="${defaultDate}" /></div>
-      <div class="form-group"><label>Category</label>
-        <select id="f-cat">
-          <option>Housing</option><option>Food & dining</option><option>Transportation</option>
-          <option>Utilities</option><option>Healthcare</option><option>Entertainment</option>
-          <option>Shopping</option><option>Savings</option><option>Income</option><option>Other</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Added by</label><input id="f-by" placeholder="Your name (optional)" /></div>
+      <div class="form-group"><label>Name</label><input id="f-name" placeholder="e.g. Groceries" value="${existing ? existing.name : ''}" /></div>
+      <div class="form-group"><label>Amount ($)</label><input id="f-amount" type="number" min="0" step="0.01" placeholder="0.00" value="${existing ? existing.amount : ''}" /></div>
+      <div class="form-group"><label>Date</label><input id="f-date" type="date" value="${existing ? existing.date : defaultDate}" /></div>
+      <div class="form-group"><label>Category</label><select id="f-cat">${catOpts}</select></div>
+      <div class="form-group"><label>Added by</label><input id="f-by" placeholder="Your name (optional)" value="${existing ? (existing.addedBy || '') : ''}" /></div>
       <div class="modal-actions">
         <button class="btn-cancel" id="modal-cancel">Cancel</button>
-        <button class="btn-save" id="modal-save">Save entry</button>
+        <button class="btn-save" id="modal-save">${existing ? 'Save changes' : 'Save entry'}</button>
       </div>
     </div>
   </div>`;
@@ -1300,8 +1307,15 @@ function openEntryModal(defaultDate) {
     const cat    = document.getElementById('f-cat').value;
     const by     = document.getElementById('f-by').value.trim();
     if (!name || !amount || !date) return;
-    const newRef = push(ref(db, 'entries'));
-    await set(newRef, { id: newRef.key, type, name, amount, date, category: cat, addedBy: by, createdAt: Date.now() });
+    if (existing) {
+      // Overwrite existing entry, preserving id and createdAt
+      await set(ref(db, 'entries/' + existing.id), {
+        ...existing, type, name, amount, date, category: cat, addedBy: by, updatedAt: Date.now()
+      });
+    } else {
+      const newRef = push(ref(db, 'entries'));
+      await set(newRef, { id: newRef.key, type, name, amount, date, category: cat, addedBy: by, createdAt: Date.now() });
+    }
     closeModal();
   });
 }
@@ -1386,26 +1400,48 @@ function openRecurModal(existingId) {
 }
 
 function openBalanceModal() {
-  const current = acctValue();
+  const today = todayStr();
+  const { value: runningBal, hasAcct } = calcDailyBalance(today);
+  const displayRunning = hasAcct ? fmt(runningBal) : null;
+
   document.getElementById('modal-root').innerHTML = `
   <div class="modal-backdrop" id="modal-backdrop">
     <div class="modal">
       <h2>Update account balance</h2>
-      <p style="font-size:13px;color:var(--text-2);margin-bottom:1rem;line-height:1.5">Enter the actual balance from your bank right now. The app will only count entries added <em>after</em> this update toward today's balance — so it stays accurate even if you update mid-day.</p>
+      ${displayRunning ? `
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:12px;color:var(--text-3);font-weight:500;">Running balance today</span>
+        <span style="font-size:16px;font-weight:600;color:${runningBal>=0?'var(--green)':'var(--red)'}">${runningBal<0?'-':''}${displayRunning}</span>
+      </div>` : ''}
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.5;">Enter your actual bank balance. The difference will be logged as an adjustment entry on today's date.</p>
       <div class="form-group">
-        <label>Current account balance ($)</label>
-        <input id="f-balance" type="number" step="0.01" placeholder="e.g. 3450.00" value="${current !== null ? current : ''}" />
+        <label>Actual account balance ($)</label>
+        <input id="f-balance" type="number" step="0.01" placeholder="e.g. 3450.00" />
       </div>
+      <div id="adjustment-preview" style="font-size:12px;color:var(--text-3);margin-top:-6px;margin-bottom:10px;min-height:18px;"></div>
       <div class="form-group">
         <label>Updated by</label>
         <input id="f-balance-by" placeholder="Your name (optional)" />
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" id="modal-cancel">Cancel</button>
-        <button class="btn-save" id="modal-save">Save balance</button>
+        <button class="btn-save" id="modal-save">Save &amp; log adjustment</button>
       </div>
     </div>
   </div>`;
+
+  // Live preview of adjustment as user types
+  const preview = document.getElementById('adjustment-preview');
+  document.getElementById('f-balance').addEventListener('input', function() {
+    const val = parseFloat(this.value);
+    if (isNaN(val) || !hasAcct) { preview.textContent = ''; return; }
+    const diff = val - runningBal;
+    if (Math.abs(diff) < 0.01) { preview.textContent = 'No adjustment needed'; preview.style.color = 'var(--text-3)'; return; }
+    const label = diff > 0 ? `+${fmt(diff)} income adjustment will be added` : `-${fmt(Math.abs(diff))} expense adjustment will be added`;
+    preview.textContent = label;
+    preview.style.color = diff > 0 ? 'var(--green)' : 'var(--red)';
+  });
+
   document.getElementById('modal-cancel').addEventListener('click', closeModal);
   document.getElementById('modal-backdrop').addEventListener('click', e => { if (e.target.id==='modal-backdrop') closeModal(); });
   document.getElementById('modal-save').addEventListener('click', async () => {
@@ -1413,16 +1449,38 @@ function openBalanceModal() {
     if (isNaN(val)) return;
     const updatedAt = Date.now();
     const by = document.getElementById('f-balance-by').value.trim();
-    // Store as object with timestamp so calcDailyBalance knows when it was set
+
+    // If we have a running balance, calculate the difference and log an adjustment entry
+    if (hasAcct) {
+      const diff = val - runningBal;
+      if (Math.abs(diff) >= 0.01) {
+        const adjType = diff > 0 ? 'income' : 'expense';
+        const newRef = push(ref(db, 'entries'));
+        await set(newRef, {
+          id: newRef.key,
+          type: adjType,
+          name: 'Balance adjustment',
+          amount: Math.abs(diff),
+          date: today,
+          category: 'Other',
+          addedBy: by || 'Balance update',
+          createdAt: updatedAt,
+          isAdjustment: true
+        });
+      }
+    }
+
+    // Store balance as object with timestamp
     const payload = { value: val, updatedAt };
     if (by) payload.updatedBy = by;
     await set(ref(db, 'accountBalance'), payload);
-    // Anchor as monthly start balance (numeric)
+
+    // Anchor as monthly start balance
     const now = new Date();
     const key = monthKey(now.getFullYear(), now.getMonth());
     await set(ref(db, 'monthlyBalances/' + key), val);
-    // Write intraday snapshot for today
-    const today = todayStr();
+
+    // Write intraday snapshot — use the new val so future daily balance calc is correct
     await set(ref(db, 'balanceSnapshots/' + today), { value: val, updatedAt });
     closeModal();
   });
@@ -1657,6 +1715,14 @@ async function handleClick(e) {
   // Delete/skip a single recurring instance
   const delInstance = e.target.closest('[data-action="del-instance"]');
   if (delInstance) { openInstanceDeleteModal(delInstance.dataset.baseId, delInstance.dataset.date); return; }
+
+  // Edit one-time entry
+  const editEntry = e.target.closest('[data-action="edit-entry"]');
+  if (editEntry) {
+    const entry = state.entries[editEntry.dataset.id];
+    if (entry) openEntryModal(entry.date, entry);
+    return;
+  }
 
   // Delete entry
   const delEntry = e.target.closest('[data-action="del-entry"]');
